@@ -1,0 +1,4 @@
+// @security: Block character deletion when #ACCOUNTLOCK=1 (account security lock)
+// yes: Block deletion (default)
+// no: Allow deletion even when security lock is active
+security_lock_block_delete: yes
