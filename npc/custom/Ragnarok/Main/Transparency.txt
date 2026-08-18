@@ -1,0 +1,304 @@
+prontera,112,88,3	script	Transparency Manager#1	833,{
+    mes "<b>[ ^0000FF Transparency Manager ^000000 ]</b>";
+    mes "I can show who holds an item on the server — either as the item itself or inserted in slotted equipment (armor, weapon, etc.).";
+    next;
+    mes "<b>[ ^0000FF Transparency Manager ^000000 ]</b>";
+    mes "Enter the <b>Item ID</b> to look up. Use @iteminfo / @ii or ratemyserver.net to find IDs.";
+    next;
+    mes "<b>[ ^0000FF Transparency Manager ^000000 ]</b>";
+    mes "Please input <b>^FF0000Item ID^000000</b> on the text box.";
+    input .@itemid;
+    next;
+
+    // Validate item ID (numeric, positive, sane range — matches t_itemid / Renewal range)
+    if (.@itemid < 1 || .@itemid > 2147483647) {
+        mes "<b>[ ^0000FF Transparency Manager ^000000 ]</b>";
+        mes "Invalid Item ID. Please enter a number between 1 and 2,147,483,647.";
+        close;
+        end;
+    }
+
+    // Use Item Transparency cache when this item is in MVP or Rare list (no live SQL = no lag)
+    if (get_itemtransparency_has_item("mvp", .@itemid))
+        set .@group$, "mvp";
+    else if (get_itemtransparency_has_item("rare", .@itemid))
+        set .@group$, "rare";
+    else
+        set .@group$, "";
+
+    if (.@group$ != "") {
+        // Cached path: read from C++ holder list (same data as Item Transparency ladder)
+        set .@count, get_itemtransparency_holder_count(.@group$, .@itemid);
+        if (.@count <= 0) {
+            mes "<b>[ ^0000FF Transparency Manager ^000000 ]</b>";
+            mes "No one has this item (or has it compounded) in the cached data. Cache refreshes every few minutes.";
+            close;
+            end;
+        }
+        .@search_item$ = "^i[" + .@itemid + "]" + F_ItemNameSafe(.@itemid);
+        set .@per, 10;
+        set .@pages, (.@count + .@per - 1) / .@per;
+        if (.@pages < 1) set .@pages, 1;
+        set .@page, 0;
+L_Page_Cached:
+        clear;
+        setdialogsize(550, 400);
+        mes "[ <b>Holders for " + .@search_item$ + " (cached)</b> ]";
+        set .@start, .@page * .@per;
+        set .@end, .@start + .@per;
+        if (.@end > .@count) set .@end, .@count;
+        freeloop(1);
+        for (set .@ctr, .@start; .@ctr < .@end; .@ctr++) {
+            .@cards_display$ = "";
+            set .@c0, get_itemtransparency_holder_card(.@group$, .@itemid, .@ctr, 0);
+            set .@c1, get_itemtransparency_holder_card(.@group$, .@itemid, .@ctr, 1);
+            set .@c2, get_itemtransparency_holder_card(.@group$, .@itemid, .@ctr, 2);
+            set .@c3, get_itemtransparency_holder_card(.@group$, .@itemid, .@ctr, 3);
+            if (.@c0 > 0) { .@s$ = F_CardDispSafe(.@c0); if (.@s$ != "") .@cards_display$ += .@s$; }
+            if (.@c1 > 0) { .@s$ = F_CardDispSafe(.@c1); if (.@s$ != "") .@cards_display$ += (.@cards_display$ != "" ? " " : "") + .@s$; }
+            if (.@c2 > 0) { .@s$ = F_CardDispSafe(.@c2); if (.@s$ != "") .@cards_display$ += (.@cards_display$ != "" ? " " : "") + .@s$; }
+            if (.@c3 > 0) { .@s$ = F_CardDispSafe(.@c3); if (.@s$ != "") .@cards_display$ += (.@cards_display$ != "" ? " " : "") + .@s$; }
+            set .@eq_id, get_itemtransparency_holder_nameid(.@group$, .@itemid, .@ctr);
+            set .@refrate_val, get_itemtransparency_holder_refine(.@group$, .@itemid, .@ctr);
+            set .@refname_val$, get_itemtransparency_holder_name(.@group$, .@itemid, .@ctr);
+            set .@source_val$, get_itemtransparency_holder_source(.@group$, .@itemid, .@ctr);
+            if (.@cards_display$ != "")
+                set .@item_display$, "^i[" + .@eq_id + "]" + F_ItemNameSafe(.@eq_id) + " [" + .@cards_display$ + "]";
+            else
+                set .@item_display$, "^i[" + .@eq_id + "]" + F_ItemNameSafe(.@eq_id) + " [" + (1 + (.@c0>0)+(.@c1>0)+(.@c2>0)+(.@c3>0)) + "]";
+            set .@message$, (.@ctr + 1) + ". <b>" + .@refname_val$ + "</b> : ";
+            if (.@refrate_val > 0)
+                set .@message$, .@message$ + "^0000ff+" + .@refrate_val + " " + .@item_display$;
+            else
+                set .@message$, .@message$ + .@item_display$;
+            set .@message$, .@message$ + " - ^FF0000<b>[ " + .@source_val$ + " ]</b>^000000";
+            mes .@message$;
+        }
+        freeloop(0);
+        mes "                    <b>Page " + (.@page + 1) + " of " + .@pages + "</b>";
+        if (.@pages > 1) {
+            switch(select("[ Next Page ]:[ Previous Page ]:[ Back ]")) {
+                case 1: set .@page, (.@page + 1) % .@pages; goto L_Page_Cached;
+                case 2: set .@page, (.@page + .@pages - 1) % .@pages; goto L_Page_Cached;
+                case 3: break;
+            }
+        } else {
+            select("[ Back ]");
+        }
+        close;
+        end;
+    }
+
+    // Live query path: item not in transparency list (MVP/Rare); same tables and logic as cache
+    // Exclude GM accounts (group_id 10-99), banned (state != 0), and accounts with no chars (same as Item Transparency cache / CreditsRanking)
+    set .@count, query_sql(
+        "SELECT i.nameid, i.refine, c.name, 'Inventory' AS source, " +
+        " (1 + (i.card0>0) + (i.card1>0) + (i.card2>0) + (i.card3>0)) AS slots, " +
+        " i.card0, i.card1, i.card2, i.card3 " +
+        "FROM `inventory` i " +
+        "JOIN `char` c ON i.char_id = c.char_id JOIN `login` l ON c.account_id = l.account_id " +
+        "WHERE (i.nameid='" + .@itemid + "' OR i.card0='" + .@itemid + "' OR i.card1='" + .@itemid + "' OR i.card2='" + .@itemid + "' OR i.card3='" + .@itemid + "') AND l.group_id NOT BETWEEN 10 AND 99 AND l.state = 0 " +
+
+        "UNION ALL " +
+        "SELECT s.nameid, s.refine, c.name, 'Storage' AS source, " +
+        " (1 + (s.card0>0) + (s.card1>0) + (s.card2>0) + (s.card3>0)) AS slots, " +
+        " s.card0, s.card1, s.card2, s.card3 " +
+        "FROM `storage` s " +
+        "JOIN `char` c ON s.account_id = c.account_id AND c.char_id = (SELECT MIN(c2.char_id) FROM `char` c2 WHERE c2.account_id = s.account_id) " +
+        "JOIN `login` l ON s.account_id = l.account_id " +
+        "WHERE (s.nameid='" + .@itemid + "' OR s.card0='" + .@itemid + "' OR s.card1='" + .@itemid + "' OR s.card2='" + .@itemid + "' OR s.card3='" + .@itemid + "') AND l.group_id NOT BETWEEN 10 AND 99 AND l.state = 0 " +
+
+        "UNION ALL " +
+        "SELECT ci.nameid, ci.refine, c.name, 'Cart' AS source, " +
+        " (1 + (ci.card0>0) + (ci.card1>0) + (ci.card2>0) + (ci.card3>0)) AS slots, " +
+        " ci.card0, ci.card1, ci.card2, ci.card3 " +
+        "FROM `cart_inventory` ci " +
+        "JOIN `char` c ON ci.char_id = c.char_id JOIN `login` l ON c.account_id = l.account_id " +
+        "WHERE (ci.nameid='" + .@itemid + "' OR ci.card0='" + .@itemid + "' OR ci.card1='" + .@itemid + "' OR ci.card2='" + .@itemid + "' OR ci.card3='" + .@itemid + "') AND l.group_id NOT BETWEEN 10 AND 99 AND l.state = 0 " +
+
+        "UNION ALL " +
+        "SELECT gs.nameid, gs.refine, g.name, 'Guild Storage' AS source, " +
+        " (1 + (gs.card0>0) + (gs.card1>0) + (gs.card2>0) + (gs.card3>0)) AS slots, " +
+        " gs.card0, gs.card1, gs.card2, gs.card3 " +
+        "FROM `guild_storage` gs " +
+        "JOIN `guild` g ON gs.guild_id = g.guild_id JOIN `char` c ON g.char_id = c.char_id JOIN `login` l ON c.account_id = l.account_id " +
+        "WHERE (gs.nameid='" + .@itemid + "' OR gs.card0='" + .@itemid + "' OR gs.card1='" + .@itemid + "' OR gs.card2='" + .@itemid + "' OR gs.card3='" + .@itemid + "') AND l.group_id NOT BETWEEN 10 AND 99 AND l.state = 0 " +
+
+        "UNION ALL " +
+        "SELECT ma.nameid, ma.refine, c.name, 'Mail' AS source, " +
+        " (1 + (ma.card0>0) + (ma.card1>0) + (ma.card2>0) + (ma.card3>0)) AS slots, " +
+        " ma.card0, ma.card1, ma.card2, ma.card3 " +
+        "FROM `mail_attachments` ma " +
+        "JOIN `mail` m ON ma.id = m.id " +
+        "JOIN `char` c ON m.dest_id = c.char_id JOIN `login` l ON c.account_id = l.account_id " +
+        "WHERE (ma.nameid='" + .@itemid + "' OR ma.card0='" + .@itemid + "' OR ma.card1='" + .@itemid + "' OR ma.card2='" + .@itemid + "' OR ma.card3='" + .@itemid + "') AND l.group_id NOT BETWEEN 10 AND 99 AND l.state = 0 " +
+
+        "ORDER BY refine DESC LIMIT 50"
+    , .@eq_nameid, .@refrate, .@refname$, .@source$, .@slots, .@card0, .@card1, .@card2, .@card3);
+
+    if (.@count <= 0) {
+        mes "<b>[ ^0000FF Transparency Manager ^000000 ]</b>";
+        mes "No one has this item (or has it compounded in slotted equipment) in Inventory, Storage, Cart, Guild Storage, or Mail.";
+        close;
+        end;
+    }
+
+    .@search_item$ = "^i[" + .@itemid + "]" + F_ItemNameSafe(.@itemid);
+    set .@per, 10;
+    set .@pages, (.@count + .@per - 1) / .@per;
+    if (.@pages < 1) set .@pages, 1;
+    set .@page, 0;
+L_Page_Live:
+    clear;
+    setdialogsize(550, 400);
+    mes "[ <b>Holders for Item ID " + .@itemid + " — " + .@search_item$ + "</b> ]";
+    set .@start, .@page * .@per;
+    set .@end, .@start + .@per;
+    if (.@end > .@count) set .@end, .@count;
+    freeloop(1);
+    for (set .@ctr, .@start; .@ctr < .@end; .@ctr++) {
+        .@cards_display$ = "";
+        if (.@card0[.@ctr] > 0) { .@s$ = F_CardDispSafe(.@card0[.@ctr]); if (.@s$ != "") .@cards_display$ += .@s$; }
+        if (.@card1[.@ctr] > 0) { .@s$ = F_CardDispSafe(.@card1[.@ctr]); if (.@s$ != "") .@cards_display$ += (.@cards_display$ != "" ? " " : "") + .@s$; }
+        if (.@card2[.@ctr] > 0) { .@s$ = F_CardDispSafe(.@card2[.@ctr]); if (.@s$ != "") .@cards_display$ += (.@cards_display$ != "" ? " " : "") + .@s$; }
+        if (.@card3[.@ctr] > 0) { .@s$ = F_CardDispSafe(.@card3[.@ctr]); if (.@s$ != "") .@cards_display$ += (.@cards_display$ != "" ? " " : "") + .@s$; }
+
+        .@eq_icon$ = "^i[" + .@eq_nameid[.@ctr] + "]";
+        .@eq_name$ = F_ItemNameSafe(.@eq_nameid[.@ctr]);
+        if (.@cards_display$ != "")
+            .@item_display$ = .@eq_icon$ + .@eq_name$ + " [" + .@cards_display$ + "]";
+        else
+            .@item_display$ = .@eq_icon$ + .@eq_name$ + " [" + .@slots[.@ctr] + "]";
+
+        .@message$ = (.@ctr + 1) + ". <b>" + .@refname$[.@ctr] + "</b> : ";
+        if (.@refrate[.@ctr] > 0)
+            .@message$ += "^0000ff+" + .@refrate[.@ctr] + " " + .@item_display$;
+        else
+            .@message$ += .@item_display$;
+        .@message$ += " - ^FF0000<b>[ " + .@source$[.@ctr] + " ]</b>^000000";
+        mes .@message$;
+    }
+    freeloop(0);
+    mes "                    <b>Page " + (.@page + 1) + " of " + .@pages + "</b>";
+    if (.@pages > 1) {
+        switch(select("[ Next Page ]:[ Previous Page ]:[ Back ]")) {
+            case 1: set .@page, (.@page + 1) % .@pages; goto L_Page_Live;
+            case 2: set .@page, (.@page + .@pages - 1) % .@pages; goto L_Page_Live;
+            case 3: break;
+        }
+    } else {
+        select("[ Back ]");
+    }
+
+    close;
+
+OnInit:
+    .Active = 1;
+    while( getvariableofnpc(.Active,"Transparency Manager#1") ) {
+    PUBTITLE:
+        freeloop(1);
+        showscript "Transparency Manager", getnpcid(0), AREA;			
+        sleep 1000; 
+        freeloop(0);
+        goto PUBTITLE;
+    }
+end;
+	
+}
+
+// Item Transparency Ladder — item list and counts from C++ cache (src/map/item_transparency.cpp).
+// No per-view SQL; cache refreshes on interval (db/item_transparency.yml).
+prontera,124,86,4	script	Transparency Ladder	833,{
+	mes "";
+	setdialogsize(300, 300);
+	setdialogpospercent(50, 50);
+	mes "<b>[ ^0000FF Item Transparency Ladder ^000000 ]</b>";
+	mes "------------------------------";
+	next;
+
+	while (1) {
+		mes "<b>[ ^0000FF Item Transparency Ladder ^000000 ]</b>";
+		mes "What would you like to view?";
+		next;
+
+		switch(select("[ > ] Rare Cards:[ > ] Rare Items:[ > ] Close")) {
+		case 1:
+			callsub S_ShowGroup, "mvp", "Rare Card List";
+			break;
+		case 2:
+			callsub S_ShowGroup, "rare", "Rare Item List";
+			break;
+		case 3:
+			close;
+		}
+	}
+
+S_ShowGroup:
+	.@group$ = getarg(0);
+	.@title$ = getarg(1);
+
+	.@size = get_itemtransparency_size(.@group$);
+	if (!.@size) {
+		mes "<b>[ ^0000FF "+.@title$+" ^000000 ]</b>";
+		mes "No item IDs configured for this group.";
+		mes "Edit `db/item_transparency.yml` -> Body.Groups";
+		next;
+		return;
+	}
+
+	.@page = 0;
+	.@per = 8;
+	.@pages = (.@size + .@per - 1) / .@per;
+
+	do {
+		setdialogsize (300,380);
+		mes "<b>[ ^0000FF "+.@title$+" ^000000 ]</b>";
+		mes "------------------------------";
+
+		.@start = .@page * .@per;
+		.@end = .@start + .@per;
+		if (.@end > .@size) .@end = .@size;
+
+		for (.@i = .@start; .@i < .@end; ++.@i) {
+			.@id = get_itemtransparency_itemid(.@group$, .@i);
+			.@cnt = get_itemtransparency_count(.@group$, .@id);
+			mes "- ^i[" + .@id + "]  " + getitemname(.@id) + ": ^0000FF<b>" + callfunc("F_InsertComma", .@cnt) + "</b>^000000";
+		}
+
+		mes "<b>Page " + (.@page + 1) + " of " + .@pages + "</b>";
+		if (.@pages > 1) {
+			if (.@page + 1 < .@pages)
+				.@c = select("[ > ] Next Page:[ > ] Previous Page:[ > ] Back");
+			else
+				.@c = select("[ > ] First Page:[ > ] Previous Page:[ > ] Back");
+
+			switch (.@c) {
+			case 1:
+				.@page = (.@page + 1 < .@pages) ? .@page + 1 : 0;
+				clear;
+				break;
+			case 2:
+				.@page = (.@page > 0) ? .@page - 1 : .@pages - 1;
+				clear;
+				break;
+			case 3:
+				return;
+			}
+		} else {
+			select("Back");
+			return;
+		}
+	} while(1);
+
+OnInit:
+    .Active = 1;
+    while( getvariableofnpc(.Active,"Transparency Ladder") ) {
+    PUBTITLE:
+        freeloop(1);
+        showscript "Transparency Ladder", getnpcid(0), AREA;			
+        sleep 1000; 
+        freeloop(0);
+        goto PUBTITLE;
+    }
+end;
+}

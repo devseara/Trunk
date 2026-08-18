@@ -1,0 +1,14 @@
+//===== Shakto Script ========================================
+//===== https://ronovelty.com/ ===============================
+//= Mapflag: noitem
+//===== Description: =========================================
+//= Remove items drops on specific maps
+//= itemid or itemname or item type
+//= one line per map
+//===== Additional Comments: =================================
+//= 1.0 Create file
+//============================================================
+
+pvp_y_1-2	mapflag	noitem	4105,4141,607,608
+1@uwrld	mapflag	noitem	4105,4141,4044,607,608
+

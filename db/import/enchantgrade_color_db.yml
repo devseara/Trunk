@@ -1,0 +1,63 @@
+# This file is a part of rAthena.
+#   Copyright(C) 2021 rAthena Development Team
+#   https://rathena.org - https://github.com/rathena
+#   Copyright(C) 2026 Louis T Steinhil Development Team
+#   https://github.com/YlenXWalker
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+###########################################################################
+# Enchant Grade Color Database - Import
+###########################################################################
+#
+# Override or add enchant grade colors here.
+# Entries in this file take precedence over db/enchantgrade_color_db.yml.
+#
+# Format:
+#   - Grade: <number>          (1=Rare, 2=Epic, 3=Mythic, 4=Legendary, 5=S)
+#     Label: <display label without brackets>
+#     Color: <RRGGBB hex>
+#
+# Examples:
+#   - Grade: 4
+#     Label: Legendary
+#     Color: FFD700
+#
+#   # Adding a new grade (requires enum entry in mmo.hpp):
+#   - Grade: 6
+#     Label: Ancient
+#     Color: FF8800
+#
+###########################################################################
+
+Header:
+  Type: ENCHANTGRADE_COLOR_DB
+  Version: 1
+
+Body:
+  - Grade: 1
+    Label: Rare
+    Color: FFD700
+  - Grade: 2
+    Label: Epic
+    Color: FFD700
+  - Grade: 3
+    Label: Mythic
+    Color: FFD700
+  - Grade: 4
+    Label: Legendary
+    Color: FFD700
+  - Grade: 5
+    Label: S
+    Color: FFD700

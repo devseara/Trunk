@@ -1,0 +1,222 @@
+
+//============================================================
+//= Pvp Warper Command : OSRO Ispired
+//===== By: ==================================================
+//= DevSeara™
+//===== Current Version: =====================================
+//= 1.0
+//===== Description: =========================================
+//= PvP Rooms
+//===== Changelog: ===========================================
+//= Not yet tested for bugs
+//= 1.0 Implementation
+//============================================================
+
+-	script	PvPWarper	-1,{
+function F_Teleport; function F_CountPlayers; 
+.@npc$ = "[ ^0000FF PVP Warper ^000000 ]";
+
+OnTalk:
+
+    for( set .@i,0; .@i < getarraysize(.pvpSelect$); set .@i, .@i + 1 ) {
+
+        if(.@i < 1) {
+            .@count = getmapusers(.pvpmaps$[.@i]);
+            set .@buildmenu$, .@buildmenu$ + " > " + .pvpSelect$[.@i]  + " ^0000FF[" + .@count + "]^000000 ";
+        } else {
+            set .@buildmenu$, .@buildmenu$ + " > " + .pvpSelect$[.@i];
+        }
+
+        set .@buildmenu$, .@buildmenu$ + ":";
+    }
+
+    set .@i, select(.@buildmenu$)-1;
+    switch(.@i) {
+        case 0:
+            goto NormalPVP;
+        //case 5:
+            //goto SinCrossRoom;
+    }
+end;
+
+NormalPVP:
+    if (Class == Job_Novice && BaseLevel < 70) {
+        emotion ET_CRY,0;
+        message(strcharinfo(0),"You must be at least Base Level 70 and not of the Novice class to proceed. Please meet the requirements before attempting again.");
+        end;
+    }
+
+    F_Teleport(0);
+end;
+
+
+PvPPointShop:
+    mes .@npc$;
+    mes "Please select an item category.";
+    callfunc "PvPShop";
+end;
+
+OnInit:
+    .map_size = getarraysize(.pvpmaps$);
+    .npc$ = strnpcinfo(0);
+    setarray .pvpmaps$,
+                "1@uwrld";// Normal PVP
+
+    setarray .pvpSelect$,
+        "Free For All";
+
+
+    setarray .@mapflag,
+        mf_loadevent,
+        mf_nowarp,
+        mf_nogo,
+        mf_nowarpto,
+        mf_nosave,
+        mf_nomemo,
+        mf_noteleport,
+        mf_noreturn,
+        mf_nobranch,
+        mf_pvp,
+        mf_nobranch,
+        mf_noicewall,
+        mf_novending,
+        mf_partylock;
+
+    for ( .@i = 0; .@i < getarraysize(.@mapflag); .@i++ ) {
+        for ( .@x = 0; .@x < getarraysize(.pvpmaps$); .@x++ ) {
+            setmapflag .pvpmaps$[.@x], .@mapflag[.@i];
+        }
+    }
+
+
+    .Active = 1;
+	while( getvariableofnpc(.Active,strnpcinfo(0)) ) {
+        waitingroom "PvP Warper [ " + F_CountPlayers() +" ]",0;
+        sleep 1000;
+        delwaitingroom;
+	}
+
+end;
+
+OnAgitEnd:
+OnAgitEnd2:
+	hideoffnpc strnpcinfo(0);
+	end;
+
+OnAgitStart:
+OnAgitStart2:
+	hideonnpc strnpcinfo(0);
+end;
+
+    function F_CountPlayers {
+        set .@count,0;
+        for( set .@i,0; .@i < getarraysize(.pvpmaps$); set .@i, .@i + 1 ) {
+            .@count = .@count + getmapusers(.pvpmaps$[.@i]);
+        }
+
+        return .@count;
+    }
+
+    function F_Teleport {
+        sc_end SC_ASSUMPTIO;
+		sc_end SC_GOSPEL;
+		sc_end SC_MINDBREAKER;
+		sc_end SC_SKE;
+        sc_end SC_Adrenaline;
+        sc_end SC_WeaponPerfection;
+        sc_end SC_Overthrust;
+        sc_end SC_MaximizePower;
+        sc_end SC_SCRESIST;
+        sc_end SC_INCMHPRATE;
+        sc_end SC_INCMSPRATE;
+        sc_end SC_INCALLSTATUS;
+        sc_end SC_ASPERSIO;
+        sc_end SC_BENEDICTIO;
+        sc_end SC_INCDEFRATE;
+        sc_end SC_INCATKRATE;
+        sc_end SC_INCHIT;
+        sc_end SC_INCFLEE;
+        sc_end SC_Eternalchaos;
+        sc_end SC_Drumbattle;
+        sc_end SC_Nibelungen;
+        sc_end SC_Rokisweil;
+        sc_end SC_Intoabyss;
+        sc_end SC_Siegfried;
+        sc_end SC_Whistle;
+        sc_end SC_Assncros;
+        sc_end SC_Poembragi;
+        sc_end SC_Humming;
+        sc_end SC_Dontforgetme;
+        sc_end SC_Fortune;
+        sc_end SC_Service4u;
+
+        .@index = getarg(0);
+        .@map$ = .pvpmaps$[.@index];
+        .@menu$ = .pvpSelect$[.@index];
+        .@x = 0;
+        .@y = 0;
+
+        warp .@map$,.@x,.@y;
+        announce strcharinfo(0) + " has entered the " + .@menu$,bc_blue|bc_all;
+    }
+
+OnPCDieEvent:
+  // Check if user died on PvP map:
+  .@pvpmap = 0;
+  for (.@i = 0; .@i < .map_size; .@i++) {
+    if (.pvpmaps$[.@i] == strcharinfo(3)) {
+      .@pvpmap = 1; // If current map is in the pvp maps array, it is a PvP map
+    }
+  }
+  if (.@pvpmap) {
+  	set @Die,@Die + 1;
+  	if( @Die % 2 == 0 ) warp "SavePoint",0,0;
+    end;
+  }
+  end;
+}
+
+-	script	Taunt	730,{
+	mes .npc$;
+	mes "Taunt Every Players in Midgard.";
+	mes "It will cost you "+F_InsertComma(.zeny)+"z";
+	switch(select("Confirm:Maybe, Later")) {
+		case 1:
+			.@gettimetick = gettimetick(2);
+			if (.zeny > 0 && Zeny <= .zeny) {
+				clear;
+				mes .npc$;
+				mes "You dont have enough zeny.";
+				close;
+			} else if (.taunt_delay_seconds > 0 && .@gettimetick < (#TAUNT_TIME + .taunt_delay_seconds)) {
+				clear;
+				mes .npc$;
+				mes "You cant taunt for the next "+((#TAUNT_TIME + .taunt_delay_seconds) - .@gettimetick)+" second(s)";
+				close;
+			}
+			set #TAUNT_TIME, .@gettimetick;
+			Zeny -= .zeny;
+			progressbar "00FF00", 2;
+            announce "[PvP System]: "+ strcharinfo(0) +" is looking for an enemy in PvP Arena - "+strcharinfo(3)+"",bc_all; //announce and end
+			close;
+			break;
+		case 2:
+			clear;
+			mes .npc$;
+			mes "Okay, you can always come back to me.";
+			close;
+		break;
+	}
+OnInit:
+    .npc$ = "^00B2EE[PvP Taunt]^000000";
+    .zeny = 10000; // 10m
+    .taunt_delay_seconds = 180;
+    delwaitingroom;
+    waitingroom "Taunt Everyone!",0;
+end;
+
+}
+
+prontera,111,99,3	duplicate(PvPWarper)	PvP Warper#1	725
+
+

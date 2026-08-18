@@ -1,0 +1,96 @@
+###########################################################################
+# This file is a part of rAthena.
+#   Copyright(C) 2024 rAthena Development Team
+#   https://rathena.org - https://github.com/rathena
+#   Copyright(C) 2024 rAthena Development Team
+#   https://github.com/YlenXWalker/
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+###########################################################################
+# Item Transparency / Ladder Cache Configuration
+###########################################################################
+#
+# This file controls which items are counted by the C++ cache:
+#   - src/map/item_transparency.cpp
+#   - src/map/item_transparency.hpp
+#
+# You can change item IDs / tables / refresh interval here WITHOUT recompiling.
+#
+# NOTE (performance):
+# - For big servers, make sure you applied the SQL indexes upgrade:
+#   sql-files/upgrades/upgrade_20260112_item_transparency_indexes.sql
+# - If DB load is still high, increase RefreshIntervalMs and/or remove heavy tables
+#   like mail_attachments.
+#
+###########################################################################
+
+Header:
+  Type: ITEM_TRANSPARENCY_DB
+  Version: 1
+
+Body:
+
+  Settings:
+  # How often the server refreshes the cache from SQL (milliseconds).
+  #
+  # Common values:
+  # - 300000  = 5 minutes  (default)
+  # - 600000  = 10 minutes (recommended for high-pop / large DB)
+  # - 1800000 = 30 minutes (very large DB)
+    RefreshIntervalMs: 300000
+
+  # Which SQL tables are scanned for loose items and compounded cards.
+  #
+  # Tip: `mail_attachments` is often abused to "hide" items and also adds DB load.
+  #      Remove it here if you want the ladder to reflect only storages/inventory.
+    Tables:
+      - inventory
+      - cart_inventory
+      - storage
+      - guild_storage
+      - mail_attachments
+
+  Groups:
+    # MVP card item IDs
+    MvpCards:
+      - 4035
+      - 4126
+      - 4082
+      - 4115
+      - 4117
+      - 4058
+      - 4136
+      - 4066
+      - 4253
+      - 4105
+      - 4141
+      - 4419
+      - 4031
+      - 4133
+      - 4102
+      - 4097
+      - 4107
+      - 4100
+      - 4040
+      - 4044
+      - 4077
+      - 4091
+      - 4028
+
+    # Rare item IDs (40003 Credits, 40000 PODS for Credits Ranking; rest for ladder / Community Checker)
+    RareItems:
+      - 1230
+      - 13017
+      - 1228
+

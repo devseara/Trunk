@@ -1,0 +1,283 @@
+# This file is a part of rAthena.
+#   Copyright(C) 2022 rAthena Development Team
+#   https://rathena.org - https://github.com/rathena
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+###########################################################################
+# Item Cash Database
+###########################################################################
+#
+# Item Cash Settings
+#
+###########################################################################
+# - Tab                     Cash shop tab. Available tabs are New, Hot, Limited, Rental, Permanent, Scrolls, Consumables, Other, Sale.
+#   Items:                  List of possible items.
+#     - Item                Item name.
+#       Price               Item cost in cash points (#CASHPOINTS).
+###########################################################################
+
+Header:
+  Type: ITEM_CASH_DB
+  Version: 1
+
+Body:
+  - Tab: Rental
+    Items:
+     - Item: Beholder_Ring_Box
+       Price: 200
+     - Item: Hallow_Ring_Box
+       Price: 200
+     - Item: Clamorous_Ring_Box
+       Price: 200
+     - Item: Chemical_Ring_Box
+       Price: 200
+     - Item: Insecticide_Ring_Box
+       Price: 200
+     - Item: Fisher_Ring_Box
+       Price: 200
+     - Item: Decussate_Ring_Box
+       Price: 200
+     - Item: Bloody_Ring_Box
+       Price: 200
+     - Item: Satanic_Ring_Box
+       Price: 200
+     - Item: Dragoon_Ring_Box
+       Price: 200
+  - Tab: Permanent
+    Items:
+    #  - Item: Dragonhelm_Gold
+    #    Price: 3500
+    #  - Item: L_Magestic_Goat
+    #    Price: 3750
+    #  - Item: L_Magestic_Goat2
+    #    Price: 3750
+    #  - Item: Parade_Cap
+    #    Price: 1500
+    #  - Item: Crown_Of_Deceit
+    #    Price: 3200
+    #  - Item: Mask_Of_Ifrit
+    #    Price: 2300
+    #  - Item: Lovecap_China
+    #    Price: 3000
+    #  - Item: Drooping_White_Kitty
+    #    Price: 1500
+    #  - Item: Large_Hibiscus
+    #    Price: 1750
+    #  - Item: Evil's_Bone_Hat
+    #    Price: 2000
+    #  - Item: Yellow_Bandana
+    #    Price: 1800
+    #  - Item: Hat_0f_King
+    #    Price: 2500
+    #  - Item: Black_Glasses
+    #    Price: 1800
+    #  - Item: Blush_Of_Groom
+    #    Price: 2500
+    #  - Item: Hairband_Of_Reginleif
+    #    Price: 2500
+    #  - Item: Ifrit's_Ear
+    #    Price: 2000
+    #  - Item: Antique_Pipe
+    #    Price: 2500
+    #  - Item: Angry_Mouth_C
+    #    Price: 1000
+    #  - Item: Spiked_Scarf
+    #    Price: 1500
+    #  - Item: Hockey_Mask
+    #    Price: 2500
+    #  - Item: Cyclops_Visor
+    #    Price: 1800
+    #  - Item: RJC_Katusa
+    #    Price: 1800
+    #  - Item: Vanilmirth_Hat
+    #    Price: 1300
+    #  - Item: Umbala_Spirit
+    #    Price: 1200
+    #  - Item: Wondering_Wolf_Helm
+    #    Price: 1500
+     - Item: Anubis_Helm
+       Price: 1200
+     - Item: Alice_Doll
+       Price: 1200
+    #  - Item: Ramen_Hat
+    #    Price: 1300
+    #  - Item: Hermose_Cap
+    #    Price: 800
+     - Item: Hunting_Cap
+       Price: 800
+     - Item: Pecopeco_Hairband
+       Price: 3000
+     - Item: Pencil_In_Mouth
+       Price: 1800
+    #  - Item: Granpa_Beard_F
+    #    Price: 2000
+    #  - Item: Fafnir_Skin
+    #    Price: 1200
+    #  - Item: Fafnir_Mask
+    #    Price: 1200
+    #  - Item: Hawk_Eyes01
+    #    Price: 1800
+    #  - Item: Cap_Of_Concentration
+    #    Price: 1000
+    #  - Item: Improved_Assassin_Mask
+    #    Price: 1300
+     - Item: J_Captain_Hat
+       Price: 1500
+    #  - Item: Balloon_Hat
+    #    Price: 1000
+     - Item: Snake_Head
+       Price: 1000
+    #  - Item: Dress_Hat
+    #    Price: 1750
+    #  - Item: Robo_Eye
+    #    Price: 2000
+     - Item: Angel_Spirit
+       Price: 1500
+    #  - Item: Rainbow_Scarf
+    #    Price: 1500
+     - Item: Gang_Scarf
+       Price: 1500
+     - Item: Donut_In_Mouth
+       Price: 1000    
+     - Item: Pirate_Dagger
+       Price: 1500   
+  - Tab: Scrolls
+    Items:
+     - Item: Battle_Manual100
+       Price: 10
+     - Item: Job_Manual50
+       Price: 10
+     - Item: Insurance
+       Price: 3
+     - Item: Bubble_Gum 100%
+       Price: 100
+     - Item: Token_Of_Siegfried
+       Price: 1
+  - Tab: Consumables
+    Items:
+     - Item: Elite_Siege_Supply_Box
+       Price: 2      
+     - Item: Battle_Manual100_Box
+       Price: 100    
+     - Item: Job_Manual50_Box
+       Price: 100    
+     - Item: F_Bubble_Gum_Box
+       Price: 800    
+     - Item: F_Token_Of_Siegfried_Box
+       Price: 10    
+     - Item: Insurance60_Package
+       Price: 150    
+     - Item: F_Blessing_10_Scroll_Box
+       Price: 100   
+     - Item: F_Inc_Agi_10_Scroll_Box
+       Price: 100   
+     - Item: Aspersio_5_Box50
+       Price: 100        
+     - Item: Pr_Reset_Stone_Box
+       Price: 2500
+     - Item: Neuralizer_Box
+       Price: 2500    
+     - Item: F_Giant_Fly_Wing_Box100
+       Price: 180
+     - Item: F_Megaphone_Box
+       Price: 100
+     - Item: Max_Weight_Up_Box
+       Price: 450
+     - Item: Repair_Scroll_Box10
+       Price: 100   
+  - Tab: Other
+    Items:
+     - Item: Inventory_Ex
+       Price: 300
+  # - Tab: Sale
+  #   Items:
+  #    - Item: Dragonhelm_Gold
+  #      Price: 1750
+  #    - Item: L_Magestic_Goat
+  #      Price: 1875
+  #    - Item: L_Magestic_Goat2
+  #      Price: 1875
+  #    - Item: Parade_Cap
+  #      Price: 750
+  #    - Item: Crown_Of_Deceit
+  #      Price: 1600
+  #    - Item: Mask_Of_Ifrit
+  #      Price: 1150
+  #    - Item: Lovecap_China
+  #      Price: 1500
+  #    - Item: Drooping_White_Kitty
+  #      Price: 750
+  #    - Item: Large_Hibiscus
+  #      Price: 875
+  #    - Item: Evil's_Bone_Hat
+  #      Price: 1000
+  #    - Item: Yellow_Bandana
+  #      Price: 900
+  #    - Item: Hat_0f_King
+  #      Price: 1250
+  #    - Item: Black_Glasses
+  #      Price: 900
+  #    - Item: Blush_Of_Groom
+  #      Price: 1250
+  #    - Item: Hairband_Of_Reginleif
+  #      Price: 1250
+  #    - Item: Ifrit's_Ear
+  #      Price: 1000
+  #    - Item: Antique_Pipe
+  #      Price: 1250
+  #    - Item: Angry_Mouth_C
+  #      Price: 500
+  #    - Item: Spiked_Scarf
+  #      Price: 750
+  #    - Item: Hockey_Mask
+  #      Price: 1250
+  #    - Item: Cyclops_Visor
+  #      Price: 900
+  #    - Item: RJC_Katusa
+  #      Price: 900
+  #    - Item: Vanilmirth_Hat
+  #      Price: 650
+  #    - Item: Umbala_Spirit
+  #      Price: 600
+  #    - Item: Wondering_Wolf_Helm
+  #      Price: 750
+  #    - Item: A_Almighty_Box
+  #      Price: 250  
+  #    - Item: A_Almighty100_Box
+  #      Price: 2500  
+  #    - Item: A_LimitPowerBooster
+  #      Price: 125  
+  #    - Item: A_LimitPowerBooster_100
+  #      Price: 1250  
+  #    - Item: Infinity_Box
+  #      Price: 125  
+  #    - Item: Infinity_10_Box
+  #      Price: 1250  
+  #    - Item: Zero_Merchant_Bell_Box
+  #      Price: 125 
+  #    - Item: Zero_Kafra_Bell_Box
+  #      Price: 250 
+  #    - Item: A_Refine_Ore_Box
+  #      Price: 125  
+  #    - Item: A_Refine_Ore_Box_Set
+  #      Price: 1250     
+  #    - Item: Neuralizer_Box
+  #      Price: 1250   
+  #    - Item: Max_Weight_Up_Box
+  #      Price: 225
+  #    - Item: F_Giant_Fly_Wing_Box100
+  #      Price: 90
+  #    - Item: Pr_Reset_Stone_Box
+  #      Price: 1250

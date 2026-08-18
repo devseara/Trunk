@@ -1,0 +1,437 @@
+function	script	F_BPEXP	{
+	.@exp_value = getarg(0);
+	.@max_exp = $bpExpPerLevel * $bpMaxLevel;
+	.@old_level = #BPEXP / $bpExpPerLevel;
+
+	if (#BPEXP < .@max_exp) {
+		set #BPEXP, #BPEXP + .@exp_value;
+		.@new_level = #BPEXP / $bpExpPerLevel;
+		.@exp_in_level = #BPEXP % $bpExpPerLevel;
+		dispbottom "[ Battle Pass ] : +" + callfunc("F_InsertComma", .@exp_value) + " EXP (" + callfunc("F_InsertComma", .@exp_in_level) + " / " + callfunc("F_InsertComma", $bpExpPerLevel) + ")";
+		if (.@new_level > .@old_level) {
+			announce "[ Battle Pass ] : " + strcharinfo(0) + " has leveled up their Battle Pass to Level " + (.@new_level + 1) + "!", bc_all, 0x00FF00;
+		}
+	}
+	return;
+}
+
+function	script	F_ItemDisp2	{
+    .@item_id = getarg(0);
+    .@item_name$ = "^i[" + .@item_id + "]" + getitemname(.@item_id);
+    .@slots = getitemslots(.@item_id);
+    if (.@slots > 0) {
+        return .@item_name$ + " [" + .@slots + "]";
+    } else {
+        return .@item_name$;
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////
+// - Additional Function for NPC Automatic Add the Useful variable.
+// - F_npcvaradd("#TESTVARIABLE",1);
+// - 1 - Daily | 2 - Weekly | 3 - Monthly
+///////////////////////////////////////////////////////////////////////////////////////
+function	script	F_npcvaradd	{
+    .@new_key$ = getarg(0);
+    .@varmode = getarg(1);
+
+    if (.@varmode == 3) {
+        .@size = getarraysize($monthly_reset_keys$);
+        for (.@i = 0; .@i < .@size; .@i++) {
+            if ($monthly_reset_keys$[.@i] == .@new_key$)
+                return;
+        }
+        setarray $monthly_reset_keys$[.@size], .@new_key$;
+    } else if (.@varmode == 2) {
+        .@size = getarraysize($weekly_reset_keys$);
+        for (.@i = 0; .@i < .@size; .@i++) {
+            if ($weekly_reset_keys$[.@i] == .@new_key$)
+                return;
+        }
+        setarray $weekly_reset_keys$[.@size], .@new_key$;
+    } else { // Daily
+        .@size = getarraysize($daily_reset_keys$);
+        for (.@i = 0; .@i < .@size; .@i++) {
+            if ($daily_reset_keys$[.@i] == .@new_key$)
+                return;
+        }
+        setarray $daily_reset_keys$[.@size], .@new_key$;
+    }
+    return;
+}
+
+//=========================================================================
+//                _________    _________    ___          O
+//               /  _____  \  /______   \  /   |   _____/\_
+//               | |_   _|  |  __    |_  | |   |  /        \
+//               |  |  /  _/  |  |    |  | |  _| | > U      |
+//               |  |  \  \   |  |____|  | |  |___\_W______/
+//               \__|   \__\  \_________/  \__________/
+//                    RAGNAROK DEVELOPERS' LOUNGE     
+//=========================================================================
+//= Battle Pass
+//================= Current Version =======================================
+//= 1.0
+//================= Changelogs ============================================
+//= 1.0 - Implementation
+//=========================================================================
+-	script	Battle Pass	-1,{
+OnInteract:
+	callfunc "F_NPC_NAME";
+    mes "Hello there, " + strcharinfo(0) + ".";
+    if (#BPPREMIUM)
+        mes "<b>^FF9933You are Premium^000000.</b>";
+
+    set .@maxEXP, $bpExpPerLevel * $bpMaxLevel;
+    set .@tsegments, 70;
+    set .@segmentEXP, .@maxEXP / .@tsegments;
+    set .@fsegments, min(.@tsegments, #BPEXP / .@segmentEXP);
+
+    set .@progressBar$, "[ ";
+    for (set .@i, 0; .@i < .@tsegments; set .@i, .@i + 1) {
+        if (.@i < .@fsegments) {
+            if (!#BPPREMIUM)
+                set .@progressBar$, .@progressBar$ + "^00FF00ll^000000"; // Green
+            else
+                set .@progressBar$, .@progressBar$ + "^FF9933ll^000000"; // Orange
+        } else {
+            set .@progressBar$, .@progressBar$ + "^a0a0a0ll^000000"; // Gray
+        }
+    }
+    set .@progressBar$, .@progressBar$ + " ]";
+
+    set .@percentage, (#BPEXP * 10000) / .@maxEXP;
+    set .@integerPart, .@percentage / 100;
+    set .@decimalPart, .@percentage % 100;
+    set .@progressBar$, .@progressBar$ + " ( " + .@integerPart + "." + (.@decimalPart < 10 ? "0" : "") + .@decimalPart + "% )";
+    set .@currentLevel, min(#BPEXP / $bpExpPerLevel, $bpMaxLevel);
+
+    set .@levelStartExp, .@currentLevel * $bpExpPerLevel;
+    set .@nextLevelExp, min((.@currentLevel + 1) * $bpExpPerLevel, .@maxEXP);
+
+    set .@levelNeedExp, .@nextLevelExp - .@levelStartExp;
+    set .@levelHaveExp, max(0, #BPEXP - .@levelStartExp);
+    set .@levelHaveExp, min(.@levelHaveExp, .@levelNeedExp);
+
+    set .@lvlSegments, 70;
+    set .@lvlSegExp, (.@levelNeedExp > 0 ? (.@levelNeedExp / .@lvlSegments) : 1);
+    set .@lvlFilled, (.@levelNeedExp > 0 ? (.@levelHaveExp / .@lvlSegExp) : 0);
+    set .@lvlFilled, min(.@lvlFilled, .@lvlSegments);
+
+    set .@levelBar$, "[ ";
+    for (set .@i, 0; .@i < .@lvlSegments; set .@i, .@i + 1) {
+        if (.@i < .@lvlFilled) {
+            if (!#BPPREMIUM)
+                set .@levelBar$, .@levelBar$ + "^00FF00ll^000000"; // Green
+            else
+                set .@levelBar$, .@levelBar$ + "^FF9933ll^000000"; // Orange
+        } else {
+            set .@levelBar$, .@levelBar$ + "^a0a0a0ll^000000"; // Gray
+        }
+    }
+    set .@levelBar$, .@levelBar$ + " ]";
+
+    set .@lvlPercent, (.@levelNeedExp > 0 ? (.@levelHaveExp * 10000) / .@levelNeedExp : 0);
+    set .@lvlInt, .@lvlPercent / 100;
+    set .@lvlDec, .@lvlPercent % 100;
+    set .@levelBar$, .@levelBar$ + " ( " + .@lvlInt + "." + (.@lvlDec < 10 ? "0" : "") + .@lvlDec + "% )";
+
+    mes "Level: " + .@currentLevel + " / " + $bpMaxLevel;
+    mes "Overall Progress : " + .@progressBar$ + " (" + F_InsertComma(#BPEXP) + " / " + F_InsertComma(.@maxEXP) + " ) EXP";
+    mes "Level Progress : " + .@levelBar$ + " (" + F_InsertComma(.@levelHaveExp) + " / " + F_InsertComma(.@levelNeedExp) + " ) EXP";
+    mes " ";
+
+    set .@nextNormLevel, 0;
+
+    for (set .@i, 0; .@i < getarraysize(.rewards); set .@i, .@i + 3) {
+        set .@lvl, .rewards[.@i];
+        if (.@lvl > .@currentLevel) {
+            if (.@nextNormLevel == 0 || .@lvl < .@nextNormLevel)
+                set .@nextNormLevel, .@lvl;
+        }
+    }
+
+    if (.@nextNormLevel) {
+        set .@msg$, "";
+        for (set .@i, 0; .@i < getarraysize(.rewards); set .@i, .@i + 3) {
+            if (.rewards[.@i] == .@nextNormLevel) {
+                set .@itemid, .rewards[.@i + 1];
+                set .@qty,    .rewards[.@i + 2];
+                if (.@msg$ != "")
+                    set .@msg$, .@msg$ + " | ";
+                set .@msg$, .@msg$ + callfunc("F_ItemDisp2", .@itemid) + " x" + .@qty;
+            }
+        }
+        mes "Next Normal Reward at Level " + .@nextNormLevel + " : " + .@msg$;
+    } else {
+        mes "You have obtained all normal rewards.";
+    }
+
+    if (#BPPREMIUM) {
+        set .@nextPremLevel, 0;
+
+        for (set .@i, 0; .@i < getarraysize(.prewards); set .@i, .@i + 3) {
+            set .@lvl, .prewards[.@i];
+            if (.@lvl > .@currentLevel) {
+                if (.@nextPremLevel == 0 || .@lvl < .@nextPremLevel)
+                    set .@nextPremLevel, .@lvl;
+            }
+        }
+
+        if (.@nextPremLevel) {
+            set .@pmsg$, "";
+            for (set .@i, 0; .@i < getarraysize(.prewards); set .@i, .@i + 3) {
+                if (.prewards[.@i] == .@nextPremLevel) {
+                    set .@itemid, .prewards[.@i + 1];
+                    set .@qty,    .prewards[.@i + 2];
+                    if (.@pmsg$ != "")
+                        set .@pmsg$, .@pmsg$ + " | ";
+                    set .@pmsg$, .@pmsg$ + callfunc("F_ItemDisp2", .@itemid) + " x" + .@qty;
+                }
+            }
+            mes "Next ^FF9933Premium^000000 Reward at Level " + .@nextPremLevel + " : " + .@pmsg$;
+        } else {
+            mes "You have obtained all premium rewards.";
+        }
+    }
+
+    setdialogsize(700, 250);
+    .@select = select("View Rewards", "Claim Rewards","Battle Pass Quest", "Cancel");
+        switch(.@select) {
+            case 1:
+                setdialogsize(550, 600);
+                clear;
+                callfunc "F_NPC_NAME";
+                mes "<b>Battle Pass Current Level : " + .@currentLevel + "</b>";
+                mes " ";
+                set .@i, 0;
+                set .@z, 0;
+                while (.@i < getarraysize(.rewards)) {
+                    set .@level, .rewards[.@i];
+                    set .@plevel, .prewards[.@z];
+                    if (.@level <= .@currentLevel)
+                        mes "Level : " + .@level + " ( ^00FF00Completed^000000 )";
+                    else
+                        mes "Level : " + .@level;
+
+                    set .@itemList$, "";
+                    set .@levelItems, 0;
+                    while (.@i + 1 < getarraysize(.rewards) && .rewards[.@i] == .@level) {
+                        set .@itemid, .rewards[.@i + 1];
+                        set .@quantity, .rewards[.@i + 2];
+                        if (.@levelItems > 0) {
+                            set .@itemList$, .@itemList$ + " | ";
+                        }
+                        set .@itemList$, .@itemList$ + callfunc("F_ItemDisp2", .@itemid) + " x" + .@quantity;
+                        set .@i, .@i + 3;
+                        set .@levelItems, .@levelItems + 1;
+                    }
+
+                    set .@pitemList$, "";
+                    set .@plevelItems, 0;
+                    while (.@z + 1 < getarraysize(.prewards) && .prewards[.@z] == .@plevel) {
+                        set .@pitemid, .prewards[.@z + 1];
+                        set .@pquantity, .prewards[.@z + 2];
+                        if (.@plevelItems > 0) {
+                            set .@pitemList$, .@pitemList$ + " | ";
+                        }
+                        set .@pitemList$, .@pitemList$ + callfunc("F_ItemDisp2", .@pitemid) + " x" + .@pquantity;
+                        set .@z, .@z + 3;
+                        set .@plevelItems, .@plevelItems + 1;
+                    }
+
+                    mes .@itemList$;
+                    mes "^FF9933Premium Rewards^000000 ------------";
+                    mes .@pitemList$;
+                    mes "------------------------------------------------------------------------------------------";
+                }
+                mes "Thats All!";
+                if(select("^0055FFReturn^000000:Close") == 2) end;
+                    clear;
+                    goto OnInteract;
+            break;
+            case 2:
+                setdialogsize(280, 182);
+                setarray .@lmReward, 0;
+                set .@rewardCount, 0;
+                if (!#BPPREMIUM)
+                    goto NonPremium;
+                clear;
+                callfunc "F_NPC_NAME";
+                mes "Select Reward Type :";
+                set .@choice, select("Normal Rewards", "^FF9933Premium Rewards^000000", "Cancel");
+                set .@isPremiumClaim, .@choice == 2;
+                if (.@choice == 3) {
+                    clear;
+                    callfunc "F_NPC_NAME";
+                    mes "Thanks for using Battle Pass System.";
+                    end;
+                }
+
+                NonPremium:
+                clear;
+                callfunc "F_NPC_NAME";
+                mes "Here's the list of reward you can claim.";
+                if (!.@isPremiumClaim) {
+                    set .@rewardsArray$, ".rewards"; 
+                    set .@size, getarraysize(.rewards);
+                    set .@menu$, "";
+                    set .@levels[0], 0;
+                    set .@index, 0;
+                    
+                    for (set .@i, 0; .@i < .@size; set .@i, .@i + 3) {
+                        set .@level, getd(.@rewardsArray$ + "[" + .@i + "]");
+                        set .@found, 0;
+                        for (set .@j, 0; .@j < .@index; set .@j, .@j + 1) {
+                            if (.@levels[.@j] == .@level) {
+                                set .@found, 1;
+                                break;
+                            }
+                        }
+
+                        if (.@level <= .@currentLevel && !#BPClaimedNormal[.@level] && .@found == 0) {
+                            set .@menu$, .@menu$ + "Claim Level " + .@level + " Reward :";
+                            set .@levels[.@index], .@level;
+                            set .@index, .@index + 1;
+                        }
+                    }
+
+                    if (.@menu$ == "") {
+                        clear;
+                        callfunc "F_NPC_NAME";
+                        mes "No rewards available to claim.";
+                        end;
+                    }
+
+                    clear;
+                    callfunc "F_NPC_NAME";
+                    mes "Here's your reward ~";
+                    mes " ";
+
+                    set .@selected, select(.@menu$) - 1;
+                    set .@selectedLevel, .@levels[.@selected];
+
+                    for (set .@i, 0; .@i < .@size; set .@i, .@i + 3) {
+                        set .@level, getd(.@rewardsArray$ + "[" + .@i + "]");
+                        set .@itemid, getd(.@rewardsArray$ + "[" + (.@i + 1) + "]");
+                        set .@quantity, getd(.@rewardsArray$ + "[" + (.@i + 2) + "]");
+                        
+                        if (.@level == .@selectedLevel) {
+                            set .@lmReward[.@rewardCount], .@itemid;
+                            set .@lmReward[.@rewardCount + 1], .@quantity;
+                            set .@rewardCount, .@rewardCount + 2;
+                            
+                            mes "x" + .@quantity + " " + callfunc("F_ItemDisp2", .@itemid);
+                            set #BPClaimedNormal[.@level], 1;
+                        }
+                    }
+                    F_RODEX_SendMail_Array(getcharid(0), "Reward", "[ Battle Pass ]", sprintf("Here's the Reward for Battle Pass\r\n\r\nLevel %d, Congratulations!", .@levels[.@selected]), 0, .@lmReward);
+                    end;
+                }
+                if (.@isPremiumClaim) {
+                    set .@rewardsArray$, ".prewards"; 
+                    set .@size, getarraysize(.prewards);
+                    set .@menu$, "";
+                    set .@levels[0], 0;
+                    set .@index, 0;
+                    
+                    for (set .@i, 0; .@i < .@size; set .@i, .@i + 3) {
+                        set .@level, getd(.@rewardsArray$ + "[" + .@i + "]");
+                        set .@found, 0;
+                        for (set .@j, 0; .@j < .@index; set .@j, .@j + 1) {
+                            if (.@levels[.@j] == .@level) {
+                                set .@found, 1;
+                                break;
+                            }
+                        }
+
+                        if (.@level <= .@currentLevel && !#BPClaimedPremium[.@level] && .@found == 0) {
+                            set .@menu$, .@menu$ + "Claim Level " + .@level + " Reward :";
+                            set .@levels[.@index], .@level;
+                            set .@index, .@index + 1;
+                        }
+                    }
+
+                    if (.@menu$ == "") {
+                        clear;
+                        callfunc "F_NPC_NAME";
+                        mes "No rewards available to claim.";
+                        end;
+                    }
+
+                    clear;
+                    callfunc "F_NPC_NAME";
+                    mes "Here's your reward ~";
+                    mes " ";
+
+                    set .@selected, select(.@menu$) - 1;
+                    set .@selectedLevel, .@levels[.@selected];
+
+                    for (set .@i, 0; .@i < .@size; set .@i, .@i + 3) {
+                        set .@level, getd(.@rewardsArray$ + "[" + .@i + "]");
+                        set .@itemid, getd(.@rewardsArray$ + "[" + (.@i + 1) + "]");
+                        set .@quantity, getd(.@rewardsArray$ + "[" + (.@i + 2) + "]");
+                        
+                        if (.@level == .@selectedLevel) {
+                            set .@lmReward[.@rewardCount], .@itemid;
+                            set .@lmReward[.@rewardCount + 1], .@quantity;
+                            set .@rewardCount, .@rewardCount + 2;
+                            
+                            mes "x" + .@quantity + " " + callfunc("F_ItemDisp2", .@itemid);
+                            set #BPClaimedPremium[.@level], 1;
+                        }
+                    }
+                    F_RODEX_SendMail_Array(getcharid(0), "Premium Reward", "[ Battle Pass ]", sprintf("Here's the Reward for Premium Battle Pass\r\n\r\nLevel %d, Congratulations!", .@levels[.@selected]), 0, .@lmReward);
+                    end;
+                }
+                mes "You have successfully claimed your reward!";
+                end;
+            break;
+            case 3:
+                clear;
+                doevent "Battle Pass Challenge#1::OnBattlePassQuest";
+                end;
+            default:
+                setdialogsize(280, 182);
+                clear;
+                callfunc "F_NPC_NAME";
+                mes "Thanks for using Battle Pass System.";
+                end;
+            break;
+        }
+
+    end;
+
+    OnInit:
+        bindatcmd "battlepass",strnpcinfo(0)+"::OnInteract";
+        F_npcvaradd("#BPEXP",3); // Monthly Reset
+	    F_npcvaradd("#BPPREMIUM",3); // Monthly Reset
+        F_npcvaradd("#BPClaimedNormal",3); // Monthly Reset
+        F_npcvaradd("#BPClaimedPremium",3); // Monthly Reset
+        .npcname$ = "Battle Pass";
+        $bpExpPerLevel = 1000;
+        $bpMaxLevel = 10;
+        setarray .rewards, // Maximum of 5 Rewards per Level
+            1, 20512, 1, // Costume
+            2, 42001, 2, // Field Manual 50% NT
+            3, 42002, 2, // Job Manual 25% NT
+            4, 42000, 3, // Elite Siege Box NT 
+            5, 42004, 3, // Blessing Scroll NT
+            6, 42005, 3, // Increase Agility Scroll NT
+            7, 42003, 1, // Bubble Gum 50%
+            8, 42006, 3, // Kafra Card NT
+            9, 42007, 3, // Life Insurance NT
+            10, 7621, 1; // Token of Siegfried
+        setarray .prewards, // Maximum of 5 Rewards per Level
+            1, 20512, 1, // Costume
+            2, 42001, 2, // Field Manual 50% NT
+            3, 42002, 2, // Job Manual 25% NT
+            4, 42000, 3, // Elite Siege Box NT 
+            5, 42004, 3, // Blessing Scroll NT
+            6, 42005, 3, // Increase Agility Scroll NT
+            7, 42003, 1, // Bubble Gum 50%
+            8, 42006, 3, // Kafra Card NT
+            9, 42007, 3, // Life Insurance NT
+            10, 7621, 1; // Token of Siegfried
+    end;
+}

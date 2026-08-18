@@ -1,0 +1,229 @@
+// Gacha - Zeny (Enhanced Version with Database Logging & Rankings)
+// Mark
+
+/*CREATE TABLE IF NOT EXISTS `gachazeny_log` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `char_id` INT NOT NULL,
+  `char_name` VARCHAR(30) NOT NULL,
+  `item_id` INT NOT NULL,
+  `item_name` VARCHAR(100) NOT NULL,
+  `rarity` ENUM('Grand','Major','Minor') DEFAULT 'Minor',
+  `zeny_spent` INT DEFAULT 100000,
+  `map` VARCHAR(30) DEFAULT '',
+  `roll_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX (`char_id`),
+  INDEX (`rarity`),
+  INDEX (`roll_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;*/
+
+/*
+CREATE TABLE IF NOT EXISTS `gacha_zenyspenders` (
+  `char_id` INT PRIMARY KEY,
+  `char_name` VARCHAR(30) NOT NULL,
+  `total_spent` BIGINT DEFAULT 0,
+  INDEX (`total_spent`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;*/
+
+
+prontera,110,83,4	script	Gacha Zeny#Enhanced	574,{
+
+//---------------------------------------------------------
+// NPC Interaction
+//---------------------------------------------------------
+mes .@npc_name$ = "<b>[ ^FF7700Zeny Gacha^000000 ]<b>";
+mes "Welcome to the ^FFAA00Zeny Gacha^000000!";
+mes "Each spin costs ^00CCFF100,000 Zeny^000000.";
+mes "You can roll multiple times at once!";
+next;
+switch(select("[ ^008715✔️^000000 ]  Roll Gacha:[ ^008715✔️^000000 ]  Preview Prizes:[ ^008715✔️^000000 ]  Top 10 Spenders:[ ^008715✔️^000000 ]  Grand Winners:[ ^008715✔️^000000 ]  Admin Options:[ ^EB0000❌^000000 ] Cancel")) {
+	case 1: goto L_Roll;
+	case 2: goto L_Preview;
+	case 3: goto L_TopSpenders;
+	case 4: goto L_GrandWinners;
+	case 5: goto L_Admin;
+	default: close;
+}
+
+//---------------------------------------------------------
+// Gacha Roll Section (Multi-Roll)
+//---------------------------------------------------------
+L_Roll:
+mes .@npc_name$;
+mes "How many rolls would you like to do?";
+next;
+switch(select("^008715 → ^000000 1 Roll:^008715 → ^000000 5 Rolls:^008715 → ^000000 10 Rolls:^008715 → ^000000 Custom Amount:^EB0000 → ^000000 Cancel")) {
+	case 1: set .@rolls, 1; break;
+	case 2: set .@rolls, 5; break;
+	case 3: set .@rolls, 10; break;
+	case 4:
+		input .@rolls;
+		if (.@rolls < 1) close;
+		break;
+	default: close;
+}
+
+set .@cost, .@rolls * 100000;
+if (Zeny < .@cost) {
+	mes .@npc_name$;
+	mes "You need at least ^FF0000" + callfunc("F_InsertComma", .@cost) + " Zeny^000000!";
+	close;
+}
+
+if (select("[ ^008715✔️^000000 ] Confirm (" + callfunc("F_InsertComma", .@cost) + " Zeny):[ ^EB0000❌^000000 ] Nevermind") == 2)
+	close;
+
+mes .@npc_name$;
+mes "Rolling " + .@rolls + " time(s)... Good luck!";
+close2;
+
+set Zeny, Zeny - .@cost;
+set .@grand, 0;
+set .@major, 0;
+set .@minor, 0;
+
+//---------------------------------------------------------
+// Prize Pools
+//---------------------------------------------------------
+setarray .@grand_pool[0], 2289,1716,1715;
+setarray .@major_pool[0], 40001,40002,40003;
+setarray .@minor_pool[0], 14003,14533,14592,12210;
+
+//---------------------------------------------------------
+// Roll Loop
+//---------------------------------------------------------
+for (.@i = 0; .@i < .@rolls; .@i++) {
+	set .@roll, rand(1,10000);
+	
+	if (.@roll <= 100) { // 1%
+		set .@idx, rand(0, getarraysize(.@grand_pool)-1);
+		set .@item_id, .@grand_pool[.@idx];
+		set .@rarity$, "Grand";
+		.@grand++;
+	} else if (.@roll <= 150) { // 0.5%
+		set .@idx, rand(0, getarraysize(.@major_pool)-1);
+		set .@item_id, .@major_pool[.@idx];
+		set .@rarity$, "Major";
+		.@major++;
+	} else { // 98.5%
+		set .@idx, rand(0, getarraysize(.@minor_pool)-1);
+		set .@item_id, .@minor_pool[.@idx];
+		set .@rarity$, "Minor";
+		.@minor++;
+	}
+
+	getitem .@item_id, 1;
+
+	//-----------------------------------------------------
+	// Announce only GRAND prizes
+	//-----------------------------------------------------
+	if (.@rarity$ == "Grand") {
+		announce "[ Zeny Gacha ] " + strcharinfo(0) + " won a Grand Prize: " + getitemname(.@item_id) + "!", bc_all | bc_blue;
+		specialeffect2 EF_REPAIRWEAPON;
+	}
+
+	//-----------------------------------------------------
+	// SQL Logging
+	//-----------------------------------------------------
+	query_sql("INSERT INTO gachazeny_log (char_id, char_name, item_id, item_name, rarity, zeny_spent, map, roll_time) VALUES (" +
+		getcharid(0) + ", '" + escape_sql(strcharinfo(0)) + "', " + .@item_id + ", '" + escape_sql(getitemname(.@item_id)) + "', '" +
+		.@rarity$ + "', 100000, '" + strcharinfo(3) + "', NOW())");
+}
+
+//---------------------------------------------------------
+// Update total spender record
+//---------------------------------------------------------
+query_sql("INSERT INTO gacha_zenyspenders (char_id, char_name, total_spent) VALUES (" + getcharid(0) + ", '" + escape_sql(strcharinfo(0)) +
+	"', " + .@cost + ") ON DUPLICATE KEY UPDATE total_spent = total_spent + " + .@cost);
+
+//---------------------------------------------------------
+// Summary Display
+//---------------------------------------------------------
+mes "<b>[ ^FFAA00Gacha Summary^000000 ]</b>";
+mes "Total Rolls: " + .@rolls;
+mes "Zeny Spent: ^00CCFF" + callfunc("F_InsertComma", .@cost) + "^000000";
+mes "Grand Prizes: ^FF0000" + .@grand + "^000000";
+mes "Major Prizes: ^FFA500" + .@major + "^000000";
+mes "Minor Prizes: ^00CCFF" + .@minor + "^000000";
+next;
+mes .@npc_name$;
+mes "Thank you for playing the Zeny Gacha!";
+close;
+
+//---------------------------------------------------------
+// Prize Preview Menu
+//---------------------------------------------------------
+L_Preview:
+mes "<b>[ ^FFAA00Prize Preview^000000 ]</b>";
+mes "Here, you can see the prizes available from the ^FFAA00Zeny Gacha^000000!";
+mes "Each spin grants a random reward will fortune favor you today?";
+next;
+next;
+switch(select("^FF0000 → Grand Prizes:^FFA500 → Major Prizes:^00CCFF → Minor Prizes:[ ^EB0000❌^000000 ] Back")) {
+	case 1:
+		setarray .@grand_pool[0], 2289,1716,1715;
+		mes "<b>^FF0000Grand Prize Pool^000000<b>:";
+		for (.@i = 0; .@i < getarraysize(.@grand_pool); .@i++)
+			mes "- " + getitemname(.@grand_pool[.@i]);
+		close;
+	case 2:
+		setarray .@major_pool[0], 40001,40002,40003;
+		mes "<b>^FFA500Major Prize Pool^000000<b>:";
+		for (.@i = 0; .@i < getarraysize(.@major_pool); .@i++)
+			mes "- " + getitemname(.@major_pool[.@i]);
+		close;
+	case 3:
+		setarray .@minor_pool[0], 14003,14533,14592,12210;
+		mes "<b>^00CCFFMinor Prize Pool^000000<b>:";
+		for (.@i = 0; .@i < getarraysize(.@minor_pool); .@i++)
+			mes "- " + getitemname(.@minor_pool[.@i]);
+		close;
+	default: close;
+}
+
+//---------------------------------------------------------
+// Top 10 Spenders
+//---------------------------------------------------------
+L_TopSpenders:
+mes "<b>[ ^FF7700Top 10 Gacha Spenders^000000 ]<b>";
+.@count = query_sql("SELECT char_name, total_spent FROM gacha_zenyspenders ORDER BY total_spent DESC LIMIT 10", .@name$, .@spent);
+if (.@count == 0) { mes "No spenders yet!"; close; }
+for (.@i = 0; .@i < .@count; .@i++)
+	mes (.@i+1) + ". ^00CCFF" + .@name$[.@i] + "^000000 - " + callfunc("F_InsertComma", .@spent[.@i]) + " Zeny";
+close;
+
+//---------------------------------------------------------
+// Grand Winners List
+//---------------------------------------------------------
+L_GrandWinners:
+mes "<b>[ ^FF7700Recent Grand Prize Winners^000000 ]<b>";
+.@count = query_sql("SELECT char_name, item_name, DATE_FORMAT(roll_time,'%m-%d %H:%i') FROM gachazeny_log WHERE rarity='Grand' ORDER BY roll_time DESC LIMIT 10", .@name$, .@item$, .@time$);
+if (.@count == 0) { mes "No Grand Prize winners yet."; close; }
+for (.@i = 0; .@i < .@count; .@i++)
+	mes "<b>^6E9710" + .@name$[.@i] + "^000000</b> got ^C90076" + .@item$[.@i] + "^000000 Time: [ " + .@time$[.@i] + " ]";
+close;
+
+//---------------------------------------------------------
+// Admin Menu
+//---------------------------------------------------------
+L_Admin:
+if (getgmlevel() < 99) {
+	mes "<b>[ ^FF7700Admin Panel^000000 ]<b>";
+	mes "You are not authorized."; 
+	close; 
+}
+switch(select("^008715 → ^000000 Clear Gacha Logs:^008715 → ^000000 Reset Spender Rankings:^EB0000 → ^000000 Cancel")) {
+	case 1:
+		query_sql("TRUNCATE TABLE gachazeny_log"); 
+		mes "<b>[ ^FF7700Admin Panel^000000 ]<b>";
+		mes "All gacha logs cleared."; 
+		close;
+	case 2:
+		query_sql("TRUNCATE TABLE gacha_zenyspenders"); 
+		mes "<b>[ ^FF7700Admin Panel^000000 ]<b>";
+		mes "Top spender rankings reset."; 
+		close;
+	default: 
+	close;
+}
+
+}

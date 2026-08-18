@@ -1,0 +1,1921 @@
+# This file is a part of Shakto.
+#   Copyright(C) 2025 Shakto Script
+#   https://ronovelty.com/
+#
+###########################################################################
+# Fake Job Profiles Database (Shakto) — Spec & Usage (EN)
+###########################################################################
+#
+# Overview
+# - This YAML defines *job profiles* used to spawn/drive fake players (bots):
+#   starting stats, gear, (optional) skills, cosmetic hats, and preferred
+#   field zones to roam/farm. Each profile can be referenced by name when
+#   creating a fake player.
+#
+# File Layout
+# - Header:
+#     Type: FAKE_JOBPROFILS_DB
+#     Version: 1
+# - Body:
+#     A list of JobProfile maps (see schema below).
+#
+###########################################################################
+# JobProfile entry (schema)
+###########################################################################
+# JobProfile                Unique profile id (string). Used by spawners. (same name as fake_player.yml)
+# Job                       Base job name (server job id, e.g., Novice, Swordman,
+#                           Mage, Archer, Acolyte, Merchant, Thief, Gunslinger,
+#                           Ninja, Taekwon). Must match server-side job enum.
+#
+# Base Stats (all integers; exact meaning is server-side)
+#   Str, Agi, Vit, Int, Dex, Luk
+#
+# Equipment (Aegis names; must exist in item DB)
+#   Weapon                   Primary weapon to equip (e.g., Orcish_Sword).
+#   Shield                   Shield to equip (optional per job; e.g., Guard).
+#   Arrow                    Boolean:
+#                             - true  => profile uses ammo; server equips suitable
+#                                        ammunition for the job (e.g., arrows/bullets).
+#                             - false => no ammunition provisioning.
+#                           NOTE: actual ammo type/resupply logic is server-side.
+#
+# Skills (optional)
+#   Skills:                  List of skill entries; omit entirely if not needed.
+#     - Skill                Skill constant (e.g., SM_BASH, MG_FIREBOLT).
+#       Number               Skill *level* to set/learn (integer).
+#
+# Hats (optional cosmetics pool)
+#   Hats:                    Weighted pool of headgears; one is picked at spawn.
+#     - Hat                  Aegis name (or "none" for no hat).
+#       Number               Selection *weight* (integer). Higher = more likely.
+#
+# FieldZones (movement/leveling targets)
+#   FieldZones:              Weighted list of maps this profile prefers.
+#     - Map                  Map name (server map id, e.g., prt_fild08).
+#       Number               Selection *weight* (integer). Higher = more likely.
+#   Notes:
+#     * These weights are *relative frequencies*, not counts.
+#     * Comments next to maps are purely descriptive for humans.
+#
+# Script (add more configuration of autoattack, buffs, effects etc...)
+#
+###########################################################################
+# Selection & Weighting semantics
+###########################################################################
+# - Hats.Number and FieldZones.Number are *relative weights* used by the picker:
+#     probability ≈ weight / sum(weights in the same list).
+# - Keep weights small, positive integers (e.g., 4..40) for readability.
+# - If a list is omitted or empty:
+#     * Hats: no hat is equipped (unless enforced elsewhere).
+#     * FieldZones: profile has no preferred maps (server behavior applies).
+#
+###########################################################################
+# Recommended conventions
+###########################################################################
+# - Keep Weapon/Shield/Hat values aligned with item AegisName (no spaces).
+# - Use Arrow: true only for profiles that actually rely on ammo
+#   (e.g., Archer/Gunslinger). Leave false for melee/casters.
+# - Skill levels (“Number”) should respect class caps and server rules.
+# - Provide several FieldZones with weights to avoid deterministic paths.
+# - Use comments to document level ranges or mob types for each map.
+#
+###########################################################################
+# Example snippet
+###########################################################################
+# - JobProfile: swordman_starter
+#   Job: Swordman
+#   Str: 60; Agi: 20; Vit: 10; Int: 0; Dex: 40; Luk: 0
+#   Weapon: Orcish_Sword
+#   Shield: Shield
+#   Arrow: false
+#   Skills:
+#     - { Skill: SM_BASH,    Number: 20 }
+#     - { Skill: SM_ENDURE,  Number: 1  }
+#   Hats:
+#     - { Hat: Bandana, Number: 25 }
+#     - { Hat: none,    Number: 10 }
+#   FieldZones:
+#     - { Map: pay_dun00, Number: 12 }  # Payon Cave 1F
+#     - { Map: moc_fild07, Number: 12 } # Wolves 20–25
+#
+###########################################################################
+# Troubleshooting
+###########################################################################
+# - “Item not found”: verify Aegis names exist in the item DB.
+# - “Can’t equip”: confirm job/job-level can use the weapon/shield/hat.
+# - “Wrong skill level”: ensure Skill constant is valid for the Job and
+#   the Number (level) respects server caps.
+# - “Never goes to map X”: increase FieldZones weight for that map, or
+#   add more maps with similar weights to balance the pool.
+###########################################################################
+
+Header:
+  Type: FAKE_JOBPROFILS_DB
+  Version: 1
+
+Body:
+  - JobProfile: training_ground
+    Job: Novice
+    Str: 20
+    Agi: 1
+    Vit: 1
+    Int: 1
+    Dex: 10
+    Luk: 1
+    Arrow : false
+    FieldZones:
+      - Map: new_1-1
+        Number: 10000
+  - JobProfile: novice_starter
+    Job: Novice
+    Str: 20
+    Agi: 1
+    Vit: 1
+    Int: 1
+    Dex: 10
+    Luk: 1
+    Weapon : N_Main_Gauche
+    Shield : Novice_Guard
+    Arrow : false
+    FieldZones:
+      # Zones d'apprentissage ultra safe (Poring/Drops/Lunatic/Fabre/Pupa/Spore low)
+      - Map: prt_fild00        # Poring/Lunatic (très safe)
+        Number: 16
+      - Map: prt_fild01        # Poring/Drops/Fabre
+        Number: 14
+      - Map: prt_fild02        # Pupa/Fabre (toujours safe)
+        Number: 12
+      # Payon side
+      - Map: pay_fild01        # Poring/Lunatic
+        Number: 12
+      - Map: pay_fild02        # Pupa/Fabre
+        Number: 10
+      # Geffen side
+      - Map: gef_fild00        # (Pre-R & Re) Poring/Poporing/Spore (reste ok <14)
+        Number: 12
+      # Morroc side
+      - Map: moc_fild01        # Picky/Condor épars (ok vers 10 avec prudence)
+        Number: 8
+      # Prontera champs supplémentaires (optionnels, restent soft <14)
+      - Map: prt_fild03        # Lunatic/Fabre épars
+        Number: 6
+      - Map: prt_fild04        # Poring/Willow légers (selon config)
+        Number: 6
+  - JobProfile: swordman_starter
+    Job: Swordman
+    Str: 80
+    Agi: 20
+    Vit: 10
+    Int: 0
+    Dex: 40
+    Luk: 0
+    Weapon : Orcish_Sword
+    Shield : Shield
+    Arrow : false
+    Skills:
+      - Skill: SM_BASH
+        Number: 10
+      - Skill: SM_ENDURE
+        Number: 1
+      - Skill: SM_PROVOKE
+        Number: 3
+    Headgears:
+      Top:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+      Mid:
+        - { Item: none, Number: 35 }
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 30 }
+      Low:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 45 }
+      CostumeMid:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 5 }
+        - { Item: none, Number: 85 }
+      CostumeLow:
+        - { Item: none, Number: 8 }
+        - { Item: none, Number: 7 }
+        - { Item: none, Number: 85 }
+    FieldZones:
+      - Map: pay_dun00        # Payon Cave 1F (Skeletons basiques, 10–20)
+        Number: 18
+      - Map: pay_fild02        # Payon Cave 2F (Skeleton Soldiers, Archer Skeletons, 15–25)
+        Number: 14
+      - Map: iz_dun00        # Prontera Culvert 1F (Familiars, Tarou, facile Heal kill)
+        Number: 12
+      - Map: iz_dun01       # Culvert 2F (Skeletons, Zombies, un peu plus dense)
+        Number: 10
+      - Map: moc_pryd01       # Pyramid 1F (Zombies, Skeleton Soldiers, 20–25)
+        Number: 10
+      - Map: pay_fild08        # Geffen Dungeon 1F (Familiars, Skeletons, 15–25)
+        Number: 8
+      - Map: pay_fild01        # Geffen Dungeon 1F (Familiars, Skeletons, 15–25)
+        Number: 10
+    Script: |
+      aa_setautoattack("13;1");
+      aa_setautoattack("14;50;100");
+  - JobProfile: mage_starter
+    Job: Mage
+    Str: 1
+    Agi: 0
+    Vit: 10
+    Int: 90
+    Dex: 20
+    Luk: 0
+    Weapon : Staffy
+    Shield : Guard
+    Arrow : false
+    Skills:
+      - Skill: MG_SOULSTRIKE
+        Number: 10
+    Headgears:
+      Top:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 10 }
+      Mid:
+        - { Item: none, Number: 35 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 30 }
+      Low:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 50 }
+      CostumeMid:
+        - { Item: none, Number: 12 }
+        - { Item: none, Number: 6 }
+        - { Item: none, Number: 82 }
+      CostumeLow:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 6 }
+        - { Item: none, Number: 84 }
+    FieldZones:
+      - Map: pay_dun00        # Payon Cave 1F (Skeletons basiques, 10–20)
+        Number: 18
+      - Map: pay_fild02        # Payon Cave 2F (Skeleton Soldiers, Archer Skeletons, 15–25)
+        Number: 14
+      - Map: iz_dun00        # Prontera Culvert 1F (Familiars, Tarou, facile Heal kill)
+        Number: 12
+      - Map: iz_dun01       # Culvert 2F (Skeletons, Zombies, un peu plus dense)
+        Number: 10
+      - Map: moc_pryd01       # Pyramid 1F (Zombies, Skeleton Soldiers, 20–25)
+        Number: 10
+      - Map: pay_fild08        # Geffen Dungeon 1F (Familiars, Skeletons, 15–25)
+        Number: 8
+      - Map: pay_fild01        # Geffen Dungeon 1F (Familiars, Skeletons, 15–25)
+        Number: 10
+#aa_setautoattack("7;1"); = no melee
+    Script: |
+      bonus bMaxSP,1000;
+      aa_setautoattack("13;1");
+      aa_setautoattack("7;1");
+      aa_setautoattack("15;40;100");
+      aa_setautoattack("14;20;100");
+  - JobProfile: archer_starter
+    Job: Archer
+    Str: 10
+    Agi: 40
+    Vit: 10
+    Int: 0
+    Dex: 60
+    Luk: 0
+    Weapon : Composite_Bow_
+    Arrow : true
+    Skills:
+      - Skill: AC_DOUBLE
+        Number: 10
+      - Skill: AC_CONCENTRATION
+        Number: 5
+    Headgears:
+      Top:
+        - { Item: none, Number: 40 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+      Mid:
+        - { Item: none, Number: 30 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 30 }
+      Low:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 35 }
+      CostumeMid:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 6 }
+        - { Item: none, Number: 4 }
+        - { Item: none, Number: 80 }
+      CostumeLow:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 6 }
+        - { Item: none, Number: 4 }
+        - { Item: none, Number: 80 }
+    FieldZones:
+      - Map: pay_dun00        # Payon Cave 1F (Skeletons basiques, 10–20)
+        Number: 18
+      - Map: pay_fild02        # Payon Cave 2F (Skeleton Soldiers, Archer Skeletons, 15–25)
+        Number: 14
+      - Map: iz_dun00        # Prontera Culvert 1F (Familiars, Tarou, facile Heal kill)
+        Number: 12
+      - Map: iz_dun01       # Culvert 2F (Skeletons, Zombies, un peu plus dense)
+        Number: 10
+      - Map: moc_pryd01       # Pyramid 1F (Zombies, Skeleton Soldiers, 20–25)
+        Number: 10
+      - Map: pay_fild08        # Geffen Dungeon 1F (Familiars, Skeletons, 15–25)
+        Number: 8
+      - Map: pay_fild01        # Geffen Dungeon 1F (Familiars, Skeletons, 15–25)
+        Number: 10
+    Script: |
+      bonus bMaxSP,1000;
+      aa_setautoattack("13;1");
+      aa_setautoattack("14;50;100");
+  - JobProfile: acolyte_starter
+    Job: Acolyte
+    Str: 10
+    Agi: 0
+    Vit: 30
+    Int: 50
+    Dex: 20
+    Luk: 0
+    Weapon : Mace_
+    Shield : Buckler_
+    Arrow : false
+    Skills:
+      - Skill: AL_HEAL
+        Number: 10
+      - Skill: AL_BLESSING
+        Number: 5
+      - Skill: AL_INCAGI
+        Number: 5
+    Headgears:
+      Top:
+        - { Item: none, Number: 30 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 10 }
+      Mid:
+        - { Item: none, Number: 30 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 35 }
+      Low:
+        - { Item: none, Number: 30 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 45 }
+      CostumeMid:
+        - { Item: none, Number: 12 }
+        - { Item: none, Number: 8 }
+        - { Item: none, Number: 80 }
+      CostumeLow:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 6 }
+        - { Item: none, Number: 84 }
+    FieldZones:
+      - Map: pay_dun00        # Payon Cave 1F (Skeletons basiques, 10–20)
+        Number: 18
+      - Map: pay_fild02        # Payon Cave 2F (Skeleton Soldiers, Archer Skeletons, 15–25)
+        Number: 14
+      - Map: iz_dun00        # Prontera Culvert 1F (Familiars, Tarou, facile Heal kill)
+        Number: 12
+      - Map: iz_dun01       # Culvert 2F (Skeletons, Zombies, un peu plus dense)
+        Number: 10
+      - Map: moc_pryd01       # Pyramid 1F (Zombies, Skeleton Soldiers, 20–25)
+        Number: 10
+      - Map: pay_fild08        # Geffen Dungeon 1F (Familiars, Skeletons, 15–25)
+        Number: 8
+      - Map: pay_fild01        # Geffen Dungeon 1F (Familiars, Skeletons, 15–25)
+        Number: 10
+    Script: |
+      bonus bMaxSP,1000;
+      aa_setautoattack("13;1");
+      aa_setautoattack("14;50;100");
+      aa_setautoattack("0;1;28;10;50");
+  - JobProfile: merchant_starter
+    Job: Merchant
+    Str: 50
+    Agi: 10
+    Vit: 20
+    Int: 0
+    Dex: 20
+    Luk: 0
+    Weapon : Orcish_Axe
+    Shield : Buckler_
+    Arrow : false
+    Headgears:
+      Top:
+        - { Item: none, Number: 30 }
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 10 }
+      Mid:
+        - { Item: none, Number: 30 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 40 }
+      Low:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 35 }
+      CostumeMid:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 6 }
+        - { Item: none, Number: 84 }
+      CostumeLow:
+        - { Item: none, Number: 8 }
+        - { Item: none, Number: 6 }
+        - { Item: none, Number: 4 }
+        - { Item: none, Number: 82 }
+    FieldZones:
+      - Map: pay_dun00        # Payon Cave 1F (Skeletons basiques, 10–20)
+        Number: 18
+      - Map: pay_fild02        # Payon Cave 2F (Skeleton Soldiers, Archer Skeletons, 15–25)
+        Number: 14
+      - Map: iz_dun00        # Prontera Culvert 1F (Familiars, Tarou, facile Heal kill)
+        Number: 12
+      - Map: iz_dun01       # Culvert 2F (Skeletons, Zombies, un peu plus dense)
+        Number: 10
+      - Map: moc_pryd01       # Pyramid 1F (Zombies, Skeleton Soldiers, 20–25)
+        Number: 10
+      - Map: pay_fild08        # Geffen Dungeon 1F (Familiars, Skeletons, 15–25)
+        Number: 8
+      - Map: pay_fild01        # Geffen Dungeon 1F (Familiars, Skeletons, 15–25)
+        Number: 10
+    Script: |
+      bonus bMaxSP,1000;
+      aa_setautoattack("13;1");
+      setcart;
+      aa_setautoattack("14;50;100");
+  - JobProfile: thief_starter
+    Job: Thief
+    Str: 40
+    Agi: 50
+    Vit: 10
+    Int: 0
+    Dex: 20
+    Luk: 0
+    Weapon : Main_Gauche
+    Shield : Buckler_
+    Arrow : false
+    Headgears:
+      Top:
+        - { Item: none, Number: 30 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 10 }
+      Mid:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 35 }
+      Low:
+        - { Item: none, Number: 30 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 30 }
+      CostumeMid:
+        - { Item: none, Number: 12 }
+        - { Item: none, Number: 8 }
+        - { Item: none, Number: 80 }
+      CostumeLow:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 6 }
+        - { Item: none, Number: 4 }
+        - { Item: none, Number: 80 }
+    FieldZones:
+      - Map: pay_dun00        # Payon Cave 1F (Skeletons basiques, 10–20)
+        Number: 18
+      - Map: pay_fild02        # Payon Cave 2F (Skeleton Soldiers, Archer Skeletons, 15–25)
+        Number: 14
+      - Map: iz_dun00        # Prontera Culvert 1F (Familiars, Tarou, facile Heal kill)
+        Number: 12
+      - Map: iz_dun01       # Culvert 2F (Skeletons, Zombies, un peu plus dense)
+        Number: 10
+      - Map: moc_pryd01       # Pyramid 1F (Zombies, Skeleton Soldiers, 20–25)
+        Number: 10
+      - Map: pay_fild08        # Geffen Dungeon 1F (Familiars, Skeletons, 15–25)
+        Number: 8
+      - Map: pay_fild01        # Geffen Dungeon 1F (Familiars, Skeletons, 15–25)
+        Number: 10
+    Script: |
+      bonus bMaxSP,1000;
+      aa_setautoattack("14;50;100");
+  - JobProfile: training_ground2
+    Job: Novice
+    Str: 20
+    Agi: 1
+    Vit: 1
+    Int: 1
+    Dex: 10
+    Luk: 1
+    Weapon : N_Main_Gauche
+    Arrow : false
+    FieldZones:
+      - Map: new_1-3
+        Number: 100
+      - Map: pay_fild04
+        Number: 100
+    Script: |
+      bonus bMaxSP,1000;
+      aa_setautoattack("13;1");
+      aa_setautoattack("14;50;100");
+      aa_setautoattack("19;1002;1"); 
+      aa_setautoattack("19;1063;1");
+      aa_setautoattack("19;1050;1");
+      aa_setautoattack("19;1011;1");
+      aa_setautoattack("19;1184;1");
+      aa_setautoattack("19;1010;1");
+      aa_setautoattack("19;1051;1");
+      aa_setautoattack("19;1009;1");
+      aa_setautoattack("19;1012;1");
+      aa_setautoattack("19;1052;1");
+  - JobProfile: knight_starter
+    Job: Knight
+    Str: 70
+    Agi: 99
+    Vit: 70
+    Int: 99
+    Dex: 40
+    Luk: 0
+    Weapon : Pike_
+    Shield : Buckler_
+    Arrow : false
+    Skills:
+      - Skill: KN_BRANDISHSPEAR
+        Number: 10
+      - Skill: SM_ENDURE
+        Number: 1
+    Headgears:
+      Top:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+      Mid:
+        - { Item: none, Number: 35 }
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 30 }
+      Low:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 45 }
+      CostumeMid:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 5 }
+        - { Item: none, Number: 85 }
+      CostumeLow:
+        - { Item: none, Number: 8 }
+        - { Item: none, Number: 7 }
+        - { Item: none, Number: 85 }
+    FieldZones:
+      - Map: iz_dun03        # orcsdun
+        Number: 15
+      - Map: orcsdun02         # mjol agriop2
+        Number: 15
+      - Map: pay_dun03        # skel worker
+        Number: 15
+      - Map: in_sphinx5        # sohee
+        Number: 15
+      - Map: mjolnir_05        # umbala sea
+        Number: 15
+      - Map: mjo_dun03          # Byalan Island 1F (Marina, Plankton, bon loot)
+        Number: 15
+      - Map: cmd_fild02       # izlude dun3
+        Number: 15
+      - Map: gef_fild14        # geffen high orc
+        Number: 15
+      - Map: moc_pryd02       # Pasana
+        Number: 15
+      - Map: mag_dun01       # Pasana
+        Number: 15
+      - Map: gef_dun01      # Pasana
+        Number: 15
+    Script: |
+      bonus bMaxSP,1000;
+      aa_setautoattack("13;1");
+      setriding 1;
+  - JobProfile: assassin_starter
+    Job: Assassin
+    Str: 80
+    Agi: 80
+    Vit: 70
+    Int: 0
+    Dex: 0
+    Luk: 80
+    Weapon : Jamadhar
+    Arrow : false
+    Headgears:
+      Top:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+      Mid:
+        - { Item: none, Number: 35 }
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 30 }
+      Low:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 45 }
+      CostumeMid:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 5 }
+        - { Item: none, Number: 85 }
+      CostumeLow:
+        - { Item: none, Number: 8 }
+        - { Item: none, Number: 7 }
+        - { Item: none, Number: 85 }
+    FieldZones:
+      - Map: iz_dun03        # orcsdun
+        Number: 15
+      - Map: orcsdun02         # mjol agriop2
+        Number: 15
+      - Map: pay_dun03        # skel worker
+        Number: 15
+      - Map: pay_dun01        # skel worker
+        Number: 15
+      - Map: in_sphinx5        # sohee
+        Number: 15
+      - Map: mjolnir_05        # umbala sea
+        Number: 15
+      - Map: mjo_dun03          # Byalan Island 1F (Marina, Plankton, bon loot)
+        Number: 15
+      - Map: cmd_fild02       # izlude dun3
+        Number: 15
+      - Map: gef_fild14        # geffen high orc
+        Number: 15
+      - Map: moc_pryd02       # Pasana
+        Number: 15
+      - Map: mag_dun01       # Pasana
+        Number: 15
+      - Map: gef_dun01      # Pasana
+        Number: 15
+    Script: |
+      bonus bMaxSP,1000;
+      aa_setautoattack("13;1");
+  - JobProfile: blacksmith_starter
+    Job: Blacksmith
+    Str: 70
+    Agi: 80
+    Vit: 70
+    Int: 99
+    Dex: 40
+    Luk: 20
+    Weapon : Two_Handed_Axe
+    Arrow : false
+    Skills:
+      - Skill: BS_WEAPONPERFECT
+        Number: 5
+      - Skill: BS_OVERTHRUST
+        Number: 5
+      - Skill: BS_ADRENALINE
+        Number: 5
+      - Skill: BS_MAXIMIZE
+        Number: 5
+    Headgears:
+      Top:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+      Mid:
+        - { Item: none, Number: 35 }
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 30 }
+      Low:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 45 }
+      CostumeMid:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 5 }
+        - { Item: none, Number: 85 }
+      CostumeLow:
+        - { Item: none, Number: 8 }
+        - { Item: none, Number: 7 }
+        - { Item: none, Number: 85 }
+    FieldZones:
+      - Map: iz_dun03        # orcsdun
+        Number: 15
+      - Map: orcsdun02         # mjol agriop2
+        Number: 15
+      - Map: pay_dun03        # skel worker
+        Number: 15
+      - Map: in_sphinx5        # sohee
+        Number: 15
+      - Map: mjolnir_05        # umbala sea
+        Number: 15
+      - Map: mjo_dun03          # Byalan Island 1F (Marina, Plankton, bon loot)
+        Number: 15
+      - Map: cmd_fild02       # izlude dun3
+        Number: 15
+      - Map: gef_fild14        # geffen high orc
+        Number: 15
+      - Map: moc_pryd02       # Pasana
+        Number: 15
+      - Map: mag_dun01       # Pasana
+        Number: 15
+      - Map: gef_dun01      # Pasana
+        Number: 15
+    Script: |
+      aa_setautoattack("13;1");
+      setcart;
+  - JobProfile: rogue_starter
+    Job: Rogue
+    Str: 70
+    Agi: 60
+    Vit: 70
+    Int: 99
+    Dex: 30
+    Luk: 0
+    Weapon : Damascus
+    Arrow : false
+    Skills:
+      - Skill: RG_BACKSTAP
+        Number: 10
+    Headgears:
+      Top:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+      Mid:
+        - { Item: none, Number: 35 }
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 30 }
+      Low:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 45 }
+      CostumeMid:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 5 }
+        - { Item: none, Number: 85 }
+      CostumeLow:
+        - { Item: none, Number: 8 }
+        - { Item: none, Number: 7 }
+        - { Item: none, Number: 85 }
+    FieldZones:
+      - Map: iz_dun03        # orcsdun
+        Number: 15
+      - Map: orcsdun02         # mjol agriop2
+        Number: 15
+      - Map: pay_dun03        # skel worker
+        Number: 15
+      - Map: pay_dun01        # skel worker
+        Number: 15
+      - Map: in_sphinx5        # sohee
+        Number: 15
+      - Map: mjolnir_05        # umbala sea
+        Number: 15
+      - Map: mjo_dun03          # Byalan Island 1F (Marina, Plankton, bon loot)
+        Number: 15
+      - Map: cmd_fild02       # izlude dun3
+        Number: 15
+      - Map: gef_fild14        # geffen high orc
+        Number: 15
+      - Map: moc_pryd02       # Pasana
+        Number: 15
+      - Map: mag_dun01       # Pasana
+        Number: 15
+      - Map: gef_dun01      # Pasana
+        Number: 15
+    Script: |
+      bonus bMaxSP,1000;
+      aa_setautoattack("13;1");
+  - JobProfile: hunter_starter
+    Job: Hunter
+    Str: 99
+    Agi: 80
+    Vit: 70
+    Int: 99
+    Dex: 80
+    Luk: 0
+    Weapon : Hunter_Bow
+    Arrow : true
+    Skills:
+      - Skill: AC_DOUBLE
+        Number: 10
+      - Skill: AC_CONCENTRATION
+        Number: 10
+    Headgears:
+      Top:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+      Mid:
+        - { Item: none, Number: 35 }
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 30 }
+      Low:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 45 }
+      CostumeMid:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 5 }
+        - { Item: none, Number: 85 }
+      CostumeLow:
+        - { Item: none, Number: 8 }
+        - { Item: none, Number: 7 }
+        - { Item: none, Number: 85 }
+    FieldZones:
+      - Map: gl_prison        # orcsdun
+        Number: 15
+    Script: |
+      bonus bMaxSP,1000;
+      aa_setautoattack("13;1");
+      setfalcon;
+  - JobProfile: priest_starter
+    Job: Priest
+    Str: 10
+    Agi: 0
+    Vit: 50
+    Int: 99
+    Dex: 80
+    Luk: 0
+    Weapon : Mace_
+    Shield : Buckler_
+    Arrow : false
+    Skills:
+      - Skill: AL_HEAL
+        Number: 10
+      - Skill: AL_BLESSING
+        Number: 10
+      - Skill: AL_INCAGI
+        Number: 10
+      - Skill: PR_KYRIE
+        Number: 10
+    Headgears:
+      Top:
+        - { Item: none, Number: 30 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 10 }
+      Mid:
+        - { Item: none, Number: 30 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 35 }
+      Low:
+        - { Item: none, Number: 30 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 45 }
+      CostumeMid:
+        - { Item: none, Number: 12 }
+        - { Item: none, Number: 8 }
+        - { Item: none, Number: 80 }
+      CostumeLow:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 6 }
+        - { Item: none, Number: 84 }
+    FieldZones:
+      - Map: gl_prison        # Payon Cave 2F (Skeleton Soldiers, Archer Skeletons, 15–25)
+        Number: 25
+    Script: |
+      bonus bMaxSP,1000;
+      aa_setautoattack("13;1");
+      aa_setautoattack("14;50;100");
+      aa_setautoattack("15;20;100");
+      aa_setautoattack("7;1");
+      aa_setautoattack("19;1196;1"); 
+      aa_setautoattack("19;1197;1");
+      aa_setautoattack("0;1;28;10;50");
+  - JobProfile: acolyte_gl
+    Job: Acolyte
+    Str: 10
+    Agi: 0
+    Vit: 50
+    Int: 99
+    Dex: 20
+    Luk: 0
+    Weapon : Mace_
+    Shield : Buckler_
+    Arrow : false
+    Skills:
+      - Skill: AL_HEAL
+        Number: 10
+      - Skill: AL_BLESSING
+        Number: 5
+      - Skill: AL_INCAGI
+        Number: 5
+    Headgears:
+      Top:
+        - { Item: none, Number: 30 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 10 }
+      Mid:
+        - { Item: none, Number: 30 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 35 }
+      Low:
+        - { Item: none, Number: 30 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 45 }
+      CostumeMid:
+        - { Item: none, Number: 12 }
+        - { Item: none, Number: 8 }
+        - { Item: none, Number: 80 }
+      CostumeLow:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 6 }
+        - { Item: none, Number: 84 }
+    FieldZones:
+      - Map: gl_prison        # Payon Cave 2F (Skeleton Soldiers, Archer Skeletons, 15–25)
+        Number: 25
+    Script: |
+      bonus bMaxSP,1000;
+      aa_setautoattack("13;1");
+      aa_setautoattack("14;50;100");
+      aa_setautoattack("15;20;100");
+      aa_setautoattack("7;1");
+      aa_setautoattack("19;1196;1"); 
+      aa_setautoattack("19;1197;1");
+      aa_setautoattack("0;1;28;10;50");
+  - JobProfile: archer_gl
+    Job: Archer
+    Str: 10
+    Agi: 50
+    Vit: 50
+    Int: 99
+    Dex: 99
+    Luk: 0
+    Weapon : Composite_Bow_
+    Arrow : true
+    Skills:
+      - Skill: AC_DOUBLE
+        Number: 10
+      - Skill: AC_CONCENTRATION
+        Number: 5
+    Headgears:
+      Top:
+        - { Item: none, Number: 40 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+      Mid:
+        - { Item: none, Number: 30 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 30 }
+      Low:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 35 }
+      CostumeMid:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 6 }
+        - { Item: none, Number: 4 }
+        - { Item: none, Number: 80 }
+      CostumeLow:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 6 }
+        - { Item: none, Number: 4 }
+        - { Item: none, Number: 80 }
+    FieldZones:
+      - Map: gl_prison        # Payon Cave 2F (Skeleton Soldiers, Archer Skeletons, 15–25)
+        Number: 25
+    Script: |
+      bonus bMaxSP,1000;
+      aa_setautoattack("13;1");
+      aa_setautoattack("14;50;100");
+      aa_setautoattack("15;20;100");
+      aa_setautoattack("7;1");
+      aa_setautoattack("19;1201;1");
+      aa_setautoattack("19;1035;1");
+  - JobProfile: mage_gl
+    Job: Mage
+    Str: 1
+    Agi: 0
+    Vit: 50
+    Int: 99
+    Dex: 70
+    Luk: 0
+    Weapon : Staffy
+    Shield : Guard
+    Arrow : false
+    Skills:
+      - Skill: MG_SOULSTRIKE
+        Number: 10
+    Headgears:
+      Top:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 10 }
+      Mid:
+        - { Item: none, Number: 35 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 30 }
+      Low:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 50 }
+      CostumeMid:
+        - { Item: none, Number: 12 }
+        - { Item: none, Number: 6 }
+        - { Item: none, Number: 82 }
+      CostumeLow:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 6 }
+        - { Item: none, Number: 84 }
+    FieldZones:
+      - Map: gl_prison        # Payon Cave 2F (Skeleton Soldiers, Archer Skeletons, 15–25)
+        Number: 25
+    Script: |
+      bonus bMaxSP,1000;
+      aa_setautoattack("13;1");
+      aa_setautoattack("14;50;100");
+      aa_setautoattack("15;40;100");
+      aa_setautoattack("7;1");
+      aa_setautoattack("19;1201;1");
+      aa_setautoattack("19;1035;1");
+  - JobProfile: acolyte_mummy
+    Job: Acolyte
+    Str: 10
+    Agi: 0
+    Vit: 50
+    Int: 99
+    Dex: 20
+    Luk: 0
+    Weapon : Mace_
+    Shield : Buckler_
+    Arrow : false
+    Skills:
+      - Skill: AL_HEAL
+        Number: 10
+      - Skill: AL_BLESSING
+        Number: 5
+      - Skill: AL_INCAGI
+        Number: 5
+    Headgears:
+      Top:
+        - { Item: none, Number: 30 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 10 }
+      Mid:
+        - { Item: none, Number: 30 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 35 }
+      Low:
+        - { Item: none, Number: 30 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 45 }
+      CostumeMid:
+        - { Item: none, Number: 12 }
+        - { Item: none, Number: 8 }
+        - { Item: none, Number: 80 }
+      CostumeLow:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 6 }
+        - { Item: none, Number: 84 }
+    FieldZones:
+      - Map: moc_pryd03        # Payon Cave 2F (Skeleton Soldiers, Archer Skeletons, 15–25)
+        Number: 25
+    Script: |
+      bonus bMaxSP,1000;
+      aa_setautoattack("13;1");
+      aa_setautoattack("14;50;100");
+      aa_setautoattack("15;20;100");
+      aa_setautoattack("7;1");
+      aa_setautoattack("19;1191;1");
+      aa_setautoattack("19;1146;1");
+      aa_setautoattack("19;1032;1");
+      aa_setautoattack("19;1111;1");
+      aa_setautoattack("0;1;28;10;50");
+  - JobProfile: archer_mummy
+    Job: Archer
+    Str: 10
+    Agi: 50
+    Vit: 50
+    Int: 99
+    Dex: 99
+    Luk: 0
+    Weapon : Composite_Bow_
+    Arrow : true
+    Skills:
+      - Skill: AC_DOUBLE
+        Number: 10
+      - Skill: AC_CONCENTRATION
+        Number: 5
+    Headgears:
+      Top:
+        - { Item: none, Number: 40 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+      Mid:
+        - { Item: none, Number: 30 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 30 }
+      Low:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 35 }
+      CostumeMid:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 6 }
+        - { Item: none, Number: 4 }
+        - { Item: none, Number: 80 }
+      CostumeLow:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 6 }
+        - { Item: none, Number: 4 }
+        - { Item: none, Number: 80 }
+    FieldZones:
+      - Map: moc_pryd03        # Payon Cave 2F (Skeleton Soldiers, Archer Skeletons, 15–25)
+        Number: 25
+    Script: |
+      bonus bMaxSP,1000;
+      aa_setautoattack("13;1");
+      aa_setautoattack("14;50;100");
+      aa_setautoattack("15;20;100");
+      aa_setautoattack("7;1");
+      aa_setautoattack("19;1191;1");
+      aa_setautoattack("19;1146;1");
+      aa_setautoattack("19;1032;1");
+  - JobProfile: mage_mummy
+    Job: Mage
+    Str: 1
+    Agi: 0
+    Vit: 50
+    Int: 99
+    Dex: 70
+    Luk: 0
+    Weapon : Staffy
+    Shield : Guard
+    Arrow : false
+    Skills:
+      - Skill: MG_SOULSTRIKE
+        Number: 10
+    Headgears:
+      Top:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 10 }
+      Mid:
+        - { Item: none, Number: 35 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 30 }
+      Low:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 50 }
+      CostumeMid:
+        - { Item: none, Number: 12 }
+        - { Item: none, Number: 6 }
+        - { Item: none, Number: 82 }
+      CostumeLow:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 6 }
+        - { Item: none, Number: 84 }
+    FieldZones:
+      - Map: moc_pryd03        # Payon Cave 2F (Skeleton Soldiers, Archer Skeletons, 15–25)
+        Number: 25
+    Script: |
+      bonus bMaxSP,1000;
+      aa_setautoattack("13;1");
+      aa_setautoattack("14;50;100");
+      aa_setautoattack("15;40;100");
+      aa_setautoattack("7;1");
+      aa_setautoattack("19;1191;1");
+      aa_setautoattack("19;1146;1");
+      aa_setautoattack("19;1032;1");
+  - JobProfile: lk_starter
+    Job: Lord_Knight
+    Str: 80
+    Agi: 99
+    Vit: 99
+    Int: 99
+    Dex: 50
+    Luk: 0
+    Weapon : Pike_
+    Shield : Buckler_
+    Arrow : false
+    Skills:
+      - Skill: KN_BRANDISHSPEAR
+        Number: 10
+      - Skill: SM_ENDURE
+        Number: 1
+      - Skill: LK_AURABLADE
+        Number: 5
+      - Skill: LK_CONCENTRATION
+        Number: 5
+    Headgears:
+      Top:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+      Mid:
+        - { Item: none, Number: 35 }
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 30 }
+      Low:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 45 }
+      CostumeMid:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 5 }
+        - { Item: none, Number: 85 }
+      CostumeLow:
+        - { Item: none, Number: 8 }
+        - { Item: none, Number: 7 }
+        - { Item: none, Number: 85 }
+    FieldZones:
+      - Map: iz_dun03        # orcsdun
+        Number: 15
+      - Map: orcsdun02         # mjol agriop2
+        Number: 15
+      - Map: pay_dun03        # skel worker
+        Number: 15
+      - Map: in_sphinx5        # sohee
+        Number: 15
+      - Map: mjolnir_05        # umbala sea
+        Number: 15
+      - Map: mjo_dun03          # Byalan Island 1F (Marina, Plankton, bon loot)
+        Number: 15
+      - Map: cmd_fild02       # izlude dun3
+        Number: 15
+      - Map: gef_fild14        # geffen high orc
+        Number: 15
+      - Map: moc_pryd02       # Pasana
+        Number: 15
+      - Map: mag_dun01       # Pasana
+        Number: 15
+      - Map: gef_dun01      # Pasana
+        Number: 15
+    Script: |
+      bonus bMaxSP,1000;
+      aa_setautoattack("13;1");
+      setriding 1;
+  - JobProfile: sinx_starter
+    Job: Assassin_Cross
+    Str: 99
+    Agi: 99
+    Vit: 70
+    Int: 0
+    Dex: 0
+    Luk: 99
+    Weapon : Jamadhar
+    Arrow : false
+    Headgears:
+      Top:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+      Mid:
+        - { Item: none, Number: 35 }
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 30 }
+      Low:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 45 }
+      CostumeMid:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 5 }
+        - { Item: none, Number: 85 }
+      CostumeLow:
+        - { Item: none, Number: 8 }
+        - { Item: none, Number: 7 }
+        - { Item: none, Number: 85 }
+    FieldZones:
+      - Map: iz_dun03        # orcsdun
+        Number: 15
+      - Map: orcsdun02         # mjol agriop2
+        Number: 15
+      - Map: pay_dun03        # skel worker
+        Number: 15
+      - Map: in_sphinx5        # sohee
+        Number: 15
+      - Map: mjolnir_05        # umbala sea
+        Number: 15
+      - Map: mjo_dun03          # Byalan Island 1F (Marina, Plankton, bon loot)
+        Number: 15
+      - Map: cmd_fild02       # izlude dun3
+        Number: 15
+      - Map: gef_fild14        # geffen high orc
+        Number: 15
+      - Map: moc_pryd02       # Pasana
+        Number: 15
+      - Map: mag_dun01       # Pasana
+        Number: 15
+      - Map: gef_dun01      # Pasana
+        Number: 15
+    Script: |
+      bonus bMaxSP,1000;
+      aa_setautoattack("13;1");
+  - JobProfile: whitesmith_starter
+    Job: Whitesmith
+    Str: 99
+    Agi: 80
+    Vit: 70
+    Int: 99
+    Dex: 99
+    Luk: 20
+    Weapon : Two_Handed_Axe
+    Arrow : false
+    Skills:
+      - Skill: BS_WEAPONPERFECT
+        Number: 5
+      - Skill: BS_OVERTHRUST
+        Number: 5
+      - Skill: BS_ADRENALINE
+        Number: 5
+      - Skill: BS_MAXIMIZE
+        Number: 5
+      - Skill: WS_OVERTHRUSTMAX
+        Number: 5
+    Headgears:
+      Top:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+      Mid:
+        - { Item: none, Number: 35 }
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 30 }
+      Low:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 45 }
+      CostumeMid:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 5 }
+        - { Item: none, Number: 85 }
+      CostumeLow:
+        - { Item: none, Number: 8 }
+        - { Item: none, Number: 7 }
+        - { Item: none, Number: 85 }
+    FieldZones:
+      - Map: iz_dun03        # orcsdun
+        Number: 15
+      - Map: orcsdun02         # mjol agriop2
+        Number: 15
+      - Map: pay_dun03        # skel worker
+        Number: 15
+      - Map: in_sphinx5        # sohee
+        Number: 15
+      - Map: mjolnir_05        # umbala sea
+        Number: 15
+      - Map: mjo_dun03          # Byalan Island 1F (Marina, Plankton, bon loot)
+        Number: 15
+      - Map: cmd_fild02       # izlude dun3
+        Number: 15
+      - Map: gef_fild14        # geffen high orc
+        Number: 15
+      - Map: moc_pryd02       # Pasana
+        Number: 15
+      - Map: mag_dun01       # Pasana
+        Number: 15
+      - Map: gef_dun01      # Pasana
+        Number: 15
+    Script: |
+      bonus bMaxSP,1000;
+      aa_setautoattack("13;1");
+      setcart;
+  - JobProfile: stalker_starter
+    Job: Stalker
+    Str: 70
+    Agi: 60
+    Vit: 70
+    Int: 99
+    Dex: 30
+    Luk: 0
+    Weapon : Damascus
+    Arrow : false
+    Skills:
+      - Skill: RG_BACKSTAP
+        Number: 10
+    Headgears:
+      Top:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+      Mid:
+        - { Item: none, Number: 35 }
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 30 }
+      Low:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 45 }
+      CostumeMid:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 5 }
+        - { Item: none, Number: 85 }
+      CostumeLow:
+        - { Item: none, Number: 8 }
+        - { Item: none, Number: 7 }
+        - { Item: none, Number: 85 }
+    FieldZones:
+      - Map: iz_dun03        # orcsdun
+        Number: 15
+      - Map: orcsdun02         # mjol agriop2
+        Number: 15
+      - Map: pay_dun03        # skel worker
+        Number: 15
+      - Map: in_sphinx5        # sohee
+        Number: 15
+      - Map: mjolnir_05        # umbala sea
+        Number: 15
+      - Map: mjo_dun03          # Byalan Island 1F (Marina, Plankton, bon loot)
+        Number: 15
+      - Map: cmd_fild02       # izlude dun3
+        Number: 15
+      - Map: gef_fild14        # geffen high orc
+        Number: 15
+      - Map: moc_pryd02       # Pasana
+        Number: 15
+      - Map: mag_dun01       # Pasana
+        Number: 15
+      - Map: gef_dun01      # Pasana
+        Number: 15
+    Script: |
+      bonus bMaxSP,1000;
+      aa_setautoattack("13;1");
+  - JobProfile: sniper_starter
+    Job: Sniper
+    Str: 99
+    Agi: 99
+    Vit: 70
+    Int: 99
+    Dex: 99
+    Luk: 0
+    Weapon : Hunter_Bow
+    Arrow : true
+    Skills:
+      - Skill: AC_DOUBLE
+        Number: 10
+      - Skill: AC_CONCENTRATION
+        Number: 10
+      - Skill: SN_WINDWALK
+        Number: 10
+      - Skill: SN_SIGHT
+        Number: 10
+      - Skill: AC_CONCENTRATION
+        Number: 10
+
+    Headgears:
+      Top:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+      Mid:
+        - { Item: none, Number: 35 }
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 30 }
+      Low:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 45 }
+      CostumeMid:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 5 }
+        - { Item: none, Number: 85 }
+      CostumeLow:
+        - { Item: none, Number: 8 }
+        - { Item: none, Number: 7 }
+        - { Item: none, Number: 85 }
+    FieldZones:
+      - Map: gl_prison        # orcsdun
+        Number: 15
+    Script: |
+      bonus bMaxSP,1000;
+      aa_setautoattack("13;1");
+      setfalcon;
+  - JobProfile: hp_starter
+    Job: High_Priest
+    Str: 10
+    Agi: 0
+    Vit: 50
+    Int: 99
+    Dex: 80
+    Luk: 0
+    Weapon : Mace_
+    Shield : Buckler_
+    Arrow : false
+    Skills:
+      - Skill: AL_HEAL
+        Number: 10
+      - Skill: AL_BLESSING
+        Number: 5
+      - Skill: AL_INCAGI
+        Number: 5
+      - Skill: PR_MAGNIFICAT
+        Number: 5
+      - Skill: HP_ASSUMPTIO
+        Number: 5
+    Headgears:
+      Top:
+        - { Item: none, Number: 30 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 10 }
+      Mid:
+        - { Item: none, Number: 30 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 35 }
+      Low:
+        - { Item: none, Number: 30 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 45 }
+      CostumeMid:
+        - { Item: none, Number: 12 }
+        - { Item: none, Number: 8 }
+        - { Item: none, Number: 80 }
+      CostumeLow:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 6 }
+        - { Item: none, Number: 84 }
+    FieldZones:
+      - Map: gl_prison        # Payon Cave 2F (Skeleton Soldiers, Archer Skeletons, 15–25)
+        Number: 25
+    Script: |
+      bonus bMaxSP,1000;
+      aa_setautoattack("13;1");
+      aa_setautoattack("14;50;100");
+      aa_setautoattack("15;20;100");
+      aa_setautoattack("7;1");
+      aa_setautoattack("19;1196;1"); 
+      aa_setautoattack("19;1197;1");
+      aa_setautoattack("0;1;28;10;50");
+  - JobProfile: hw_starter
+    Job: High_Wizard
+    Str: 50
+    Agi: 50
+    Vit: 50
+    Int: 99
+    Dex: 80
+    Luk: 0
+    Weapon : Staffy
+    Shield : Guard
+    Arrow : false
+    Skills:
+      - Skill: MG_SOULSTRIKE
+        Number: 10
+    Headgears:
+      Top:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 10 }
+      Mid:
+        - { Item: none, Number: 35 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 30 }
+      Low:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 50 }
+      CostumeMid:
+        - { Item: none, Number: 12 }
+        - { Item: none, Number: 6 }
+        - { Item: none, Number: 82 }
+      CostumeLow:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 6 }
+        - { Item: none, Number: 84 }
+    FieldZones:
+      - Map: gl_prison        # Payon Cave 2F (Skeleton Soldiers, Archer Skeletons, 15–25)
+        Number: 25
+    Script: |
+      bonus bMaxSP,1000;
+      aa_setautoattack("13;1");
+      aa_setautoattack("14;50;100");
+      aa_setautoattack("15;20;100");
+      aa_setautoattack("7;1");
+  - JobProfile: sniper_mummy
+    Job: Sniper
+    Str: 99
+    Agi: 99
+    Vit: 70
+    Int: 99
+    Dex: 99
+    Luk: 0
+    Weapon : Hunter_Bow
+    Arrow : true
+    Skills:
+      - Skill: AC_DOUBLE
+        Number: 10
+      - Skill: AC_CONCENTRATION
+        Number: 10
+      - Skill: SN_WINDWALK
+        Number: 10
+      - Skill: SN_SIGHT
+        Number: 10
+      - Skill: AC_CONCENTRATION
+        Number: 10
+
+    Headgears:
+      Top:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+      Mid:
+        - { Item: none, Number: 35 }
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 30 }
+      Low:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 45 }
+      CostumeMid:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 5 }
+        - { Item: none, Number: 85 }
+      CostumeLow:
+        - { Item: none, Number: 8 }
+        - { Item: none, Number: 7 }
+        - { Item: none, Number: 85 }
+    FieldZones:
+      - Map: moc_pryd03        # orcsdun
+        Number: 15
+    Script: |
+      bonus bMaxSP,1000;
+      aa_setautoattack("13;1");
+      setfalcon;
+  - JobProfile: hp_mummy
+    Job: High_Priest
+    Str: 10
+    Agi: 50
+    Vit: 50
+    Int: 99
+    Dex: 80
+    Luk: 0
+    Weapon : Mace_
+    Shield : Buckler_
+    Arrow : false
+    Skills:
+      - Skill: AL_HEAL
+        Number: 10
+      - Skill: AL_BLESSING
+        Number: 5
+      - Skill: AL_INCAGI
+        Number: 5
+      - Skill: PR_MAGNIFICAT
+        Number: 5
+      - Skill: HP_ASSUMPTIO
+        Number: 5
+    Headgears:
+      Top:
+        - { Item: none, Number: 30 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 10 }
+      Mid:
+        - { Item: none, Number: 30 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 35 }
+      Low:
+        - { Item: none, Number: 30 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 45 }
+      CostumeMid:
+        - { Item: none, Number: 12 }
+        - { Item: none, Number: 8 }
+        - { Item: none, Number: 80 }
+      CostumeLow:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 6 }
+        - { Item: none, Number: 84 }
+    FieldZones:
+      - Map: moc_pryd03        # Payon Cave 2F (Skeleton Soldiers, Archer Skeletons, 15–25)
+        Number: 25
+    Script: |
+      bonus bMaxSP,1000;
+      aa_setautoattack("13;1");
+      aa_setautoattack("14;50;100");
+      aa_setautoattack("15;20;100");
+      aa_setautoattack("7;1");
+      aa_setautoattack("0;1;28;10;50");
+  - JobProfile: hunter_mummy
+    Job: Hunter
+    Str: 99
+    Agi: 80
+    Vit: 70
+    Int: 99
+    Dex: 80
+    Luk: 0
+    Weapon : Hunter_Bow
+    Arrow : true
+    Skills:
+      - Skill: AC_DOUBLE
+        Number: 10
+      - Skill: AC_CONCENTRATION
+        Number: 10
+    Headgears:
+      Top:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+      Mid:
+        - { Item: none, Number: 35 }
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 30 }
+      Low:
+        - { Item: none, Number: 25 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 45 }
+      CostumeMid:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 5 }
+        - { Item: none, Number: 85 }
+      CostumeLow:
+        - { Item: none, Number: 8 }
+        - { Item: none, Number: 7 }
+        - { Item: none, Number: 85 }
+    FieldZones:
+      - Map: moc_pryd03       # orcsdun
+        Number: 15
+    Script: |
+      bonus bMaxSP,1000;
+      aa_setautoattack("13;1");
+      setfalcon;
+  - JobProfile: priest_mummy
+    Job: Priest
+    Str: 10
+    Agi: 0
+    Vit: 50
+    Int: 99
+    Dex: 80
+    Luk: 0
+    Weapon : Mace_
+    Shield : Buckler_
+    Arrow : false
+    Skills:
+      - Skill: AL_HEAL
+        Number: 10
+      - Skill: AL_BLESSING
+        Number: 10
+      - Skill: AL_INCAGI
+        Number: 10
+      - Skill: PR_KYRIE
+        Number: 10
+    Headgears:
+      Top:
+        - { Item: none, Number: 30 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 10 }
+      Mid:
+        - { Item: none, Number: 30 }
+        - { Item: none, Number: 20 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 35 }
+      Low:
+        - { Item: none, Number: 30 }
+        - { Item: none, Number: 15 }
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 45 }
+      CostumeMid:
+        - { Item: none, Number: 12 }
+        - { Item: none, Number: 8 }
+        - { Item: none, Number: 80 }
+      CostumeLow:
+        - { Item: none, Number: 10 }
+        - { Item: none, Number: 6 }
+        - { Item: none, Number: 84 }
+    FieldZones:
+      - Map: moc_pryd03        # Payon Cave 2F (Skeleton Soldiers, Archer Skeletons, 15–25)
+        Number: 25
+    Script: |
+      bonus bMaxSP,1000;
+      aa_setautoattack("13;1");
+      aa_setautoattack("14;50;100");
+      aa_setautoattack("15;20;100");
+      aa_setautoattack("7;1");
+      aa_setautoattack("0;1;28;10;50");
+
+

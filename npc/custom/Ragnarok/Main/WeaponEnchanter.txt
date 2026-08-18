@@ -1,0 +1,476 @@
+//=========================================================================
+//  Add the following since these are custom random options.
+//  data\luafiles514\lua files\datainfo\addrandomoptionnametable.lub
+//	[EnumVAR.VAR_ALL_STATS[1]] = "Allstats +%d",
+//	[EnumVAR.VAR_PERFECT_HITRATE[1]] = "Perfect Hit +%d%%",
+//	[EnumVAR.VAR_SPEED_RATE[1]] = "Movement Speed +%d%%",
+//	[EnumVAR.VAR_RACE_DAMAGE_ALL[1]] = "ATK +%d%% against All monsters",
+//	[EnumVAR.VAR_RACE_MDAMAGE_ALL[1]] = "MATK +%d%% against All monsters",
+//=========================================================================
+//  Add the following since these are custom random options.
+//  data\luafiles514\lua files\datainfo\enumvar.lub
+//	VAR_ALL_STATS = { 255, 0 },
+//	VAR_PERFECT_HITRATE = { 256, 0 },
+//	VAR_SPEED_RATE = { 257, 0 },
+//	VAR_RACE_DAMAGE_ALL = { 258, 0 },
+//	VAR_RACE_MDAMAGE_ALL = { 259, 0 },
+//=========================================================================
+//  Add the following since these are custom random options.
+//  db/re/item_randomopt_db.yml
+//  - Id: 255
+//    Option: VAR_ALL_STATS
+//    Script: |
+//      bonus bAllstats,getrandomoptinfo(ROA_VALUE);
+//  - Id: 256
+//    Option: VAR_PERFECT_HITRATE
+//    Script: |
+//      bonus bPerfectHitRate,getrandomoptinfo(ROA_VALUE);
+//  - Id: 257
+//    Option: VAR_SPEED_RATE
+//    Script: |
+//      bonus bSpeedRate,getrandomoptinfo(ROA_VALUE);
+//  - Id: 258
+//    Option: VAR_RACE_DAMAGE_ALL
+//    Script: |
+//      bonus2 bAddRace,RC_All,getrandomoptinfo(ROA_VALUE);
+//  - Id: 259
+//    Option: VAR_RACE_MDAMAGE_ALL
+//    Script: |
+//      bonus2 bMagicAddRace,RC_All,getrandomoptinfo(ROA_VALUE);
+//=========================================================================
+//  Add the following since these are custom random options.
+//  src/tool/csv2yaml.hpp
+//+	export_constant2("RDMOPT_VAR_CRITICAL_RATE", 254);
+//+	export_constant2("RDMOPT_VAR_ALL_STATS", 255);
+//+	export_constant2("RDMOPT_VAR_PERFECT_HITRATE", 256);
+//+	export_constant2("RDMOPT_VAR_SPEED_RATE", 257);
+//+	export_constant2("RDMOPT_VAR_RACE_DAMAGE_ALL", 258);
+//+	export_constant2("RDMOPT_VAR_RACE_MDAMAGE_ALL", 259);
+//	#undef export_constant2
+//}
+//
+//static bool guild_read_guildskill_tree_db( char* split[], int columns, int current );//////
+//=========================================================================
+prontera,96,64,6	script	Weapon Enhancer	10573,{
+	mes "";
+    setdialogsize(300, 300);  
+    setdialogpospercent(50, 50);  
+
+	ignoretimeout 1;
+	disable_items();
+	callfunc "F_NPC_NAME";
+	
+	mes "Do you have some ^FF0000Weapon^000000 that needs an ^FF0000enhancement^000000?.";
+	mes " ";
+	switch(select("^1755b3> ^000000 ^FF0000Enhance a Weapon^000000 | (Tier 1 ~ 5)", "^1755b3> ^000000 ^FF0000Information^000000 | Enhancement")) {
+		case 1:
+			setarray .@pos_idx[1], EQI_HAND_R, EQI_HAND_L;
+			setarray .@pos_name$[1], "Main Hand", "Off-hand";
+            setarray .@pos_loc[1], 9,8;
+			.@menu$ = "";
+			for (.@i=1; .@i<getarraysize(.@pos_idx); ++.@i) {
+				if (getequipisequiped(.@pos_idx[.@i]) && getiteminfo(getequipid(.@pos_idx[.@i]), ITEMINFO_TYPE) == IT_WEAPON) {
+					.@menu$ += sprintf("%s - [^f7900d%s^000000]:", .@pos_name$[.@i], getitemname(getequipid(.@pos_idx[.@i])));
+					++.@count;
+					.@pos_idx_[.@count] = .@pos_idx[.@i];
+					++.@found;
+				}
+			}
+			if (!.@found) {
+				clear;
+				callfunc "F_NPC_NAME";
+				mes "It seems that there's no equipment to enhance.";
+				break;
+			}
+			.@found = 0;
+			.@part = .@pos_idx_[select(.@menu$)];
+			.@itm = getequipid(.@part);
+			
+			// Get max tier for this weapon
+			freeloop(1);
+			for (.@i=0; .@i<getarraysize(.wep_tier); .@i+=2) {
+				if (.@itm == .wep_tier[.@i]) {
+					.@tier = .wep_tier[.@i+1];
+					++.@found;
+					break;
+				}
+			}
+			freeloop(0);
+
+			if (!.@found && .allow_all_weapons) {
+				.@tier = 5;
+				.@found = 1;
+			}
+
+			if (!.@found) {
+				clear;
+				callfunc "F_NPC_NAME";
+				mes "Unfortunately, the weapon you have selected to enhance does not belong.";
+				break;
+			}
+			
+			// Check existing enchantments on THIS specific equipped item
+			.@existing_enchants = 0;
+			.@highest_tier = 0;
+			for (.@i = 0; .@i < .@tier; .@i++) {
+				.@check_id = getequiprandomoption(.@part, .@i, ROA_ID);
+				if (.@check_id > 0) {
+					.@existing_enchants++;
+					.@highest_tier = .@i + 1;
+				}
+			}
+			
+			// Determine unlock status based ONLY on this item's enchantments
+			.@menu$ = "";
+			freeloop(1);
+			for (.@i=1; .@i<=.@tier; ++.@i) {
+				.@unlock[.@i] = false;
+				
+				// Check if this tier has an enchant on the current item
+				.@tier_has_enchant = getequiprandomoption(.@part, .@i-1, ROA_ID);
+				
+				// Tier 1 is always available (unlocked)
+				if (.@i == 1) {
+					.@unlock[.@i] = true;
+				}
+				// Tier 2+ is only unlocked if it already has an enchantment
+				else if (.@tier_has_enchant > 0) {
+					.@unlock[.@i] = true;
+				}
+			}
+			
+			// Build menu based on existing enchants
+			for (.@i=1; .@i<=.@tier; ++.@i) {
+				.@idx = getequiprandomoption(.@part, .@i-1, ROA_ID);
+				.@val = getequiprandomoption(.@part, .@i-1, ROA_VALUE);
+				.@opt_name$ = "";
+				
+				// Check if option lists exist for this tier
+				.@tier_has_options = (getarraysize(getd(".opt_list"+.@i)) > 0 && getarraysize(getd(".opt_val"+.@i)) > 0);
+				
+				// Find option name
+				for (.@j=0; .@j<getarraysize(getd(".opt_list"+.@i)); ++.@j) {
+					if (.@idx == getd(".opt_list"+.@i+"["+.@j+"]"))
+						.@opt_name$ = sprintf(getd(".opt_name"+.@i+"$["+.@j+"]"), .@val);
+				}
+				
+				if (.@i > 1) {
+					if (.@unlock[.@i] == true && .@tier_has_options)
+						.@menu$ += sprintf("[Tier %d] - ^A020F0%s^000000:", .@i, (.@opt_name$ == "" ? "None" : .@opt_name$));
+					else if (!.@tier_has_options)
+						.@menu$ += sprintf("[Tier %d] - ^808080Not Configured^000000:", .@i);
+					else
+						.@menu$ += sprintf("[Tier %d] - ^FF0000Locked^000000:", .@i);
+				} else {
+					if (.@tier_has_options)
+						.@menu$ += sprintf("[Tier %d] - ^A020F0%s^000000:", .@i, (.@opt_name$ == "" ? "None" : .@opt_name$));
+					else
+						.@menu$ += sprintf("[Tier %d] - ^808080Not Configured^000000:", .@i);
+				}
+			}
+			freeloop(0);
+			.@menu$ += "Cancel";
+			.@opt = select(.@menu$);
+			if (.@opt == .@tier + 1) {
+				clear;
+				callfunc "F_NPC_NAME";
+				mes "Come back when you are ready.";
+				break;
+			}
+
+			// Validate that this tier has option lists configured
+			.@tier_has_options = (getarraysize(getd(".opt_list"+.@opt)) > 0 && getarraysize(getd(".opt_val"+.@opt)) > 0);
+			if (!.@tier_has_options) {
+				clear;
+				callfunc "F_NPC_NAME";
+				mesf("^FF0000Error: Tier %d enchantment options are not configured yet.^000000", .@opt);
+				mes "Please contact an administrator.";
+				break;
+			}
+
+			// Check if this tier needs to be unlocked
+			// For tier 2+, previous tier must have an enchant
+			if (.@opt > 1) {
+				.@prev_tier_enchant = getequiprandomoption(.@part, .@opt-2, ROA_ID);
+				if (.@prev_tier_enchant <= 0) {
+					clear;
+					callfunc "F_NPC_NAME";
+					mesf("You must enchant ^FF0000Tier %d^000000 first before you can enchant ^FF0000Tier %d^000000.", .@opt-1, .@opt);
+					break;
+				}
+			}
+			
+			// Check if tier already has enchant
+			.@current_idx = getequiprandomoption(.@part, .@opt-1, ROA_ID);
+			.@has_enchant = (.@current_idx > 0);
+			
+			// Determine if we need to unlock this tier
+			.@need_unlock = (!.@unlock[.@opt] && .@opt > 1);
+			
+			clear;
+			callfunc "F_NPC_NAME";
+			
+			if (.@need_unlock) {
+				mes "In order to unlock and enchant";
+				mesf("the ^FF0000Tier %d^000000 enhancement,", .@opt);
+				mesf("of %s,", mesitemicon(.@itm, true));
+				mes "You need:";
+				mesf("- ^3355FF%sz^000000", F_InsertComma(.@opt * .zenyFee));
+				mes "Do you wish to continue?";
+				next;
+				.@menu$ = sprintf("Unlock and Enchant ^FF0000Tier %d^000000!", .@opt);
+				if (select(.@menu$, "Cancel") == 2) {
+					clear;
+					callfunc "F_NPC_NAME";
+					mes "Come back when you are ready.";
+					break;
+				}
+			} else {
+				if (.@has_enchant) {
+					mes "This tier already has an enchantment.";
+					mes "Do you want to ^FF0000re-roll^000000 it?";
+					mes " ";
+				}
+				mes "In order to enhance";
+				mesf("your weapon, %s", mesitemicon(.@itm, true));
+				mesf("You need ^3355FF%sz^000000", callfunc("F_InsertComma", .@opt * .zenyFee));
+				mes "Do you wish to continue?";
+				next;
+				.@a = select((.@has_enchant ? "Re-roll enchantment!" : "Enhance my Weapon!"), (countitem(.item_id) > 0 ? "Use ^3355FF"+getitemname(.item_id)+"^000000." : ""), "Cancel");
+				if (.@a == 3) {		
+					clear;		
+					callfunc "F_NPC_NAME";
+					mes "Come back when you are ready.";
+					break;
+				} else if (.@a == 2)
+					.@max_val = true;
+			}
+			
+			.@var$ = sprintf(".opt_list%d", .@opt);
+			.@val$ = sprintf(".opt_val%d", .@opt);
+			
+			// Check materials
+			.@need_unlock = (!.@unlock[.@opt] && .@opt > 1);
+			if (.@max_val && countitem(.item_id) < 1) .@failed = true;
+			if (Zeny < .zenyFee * .@opt) .@failed = true;
+			
+			if (.@failed){
+                clear;
+                callfunc "F_NPC_NAME";
+                mes "^FF0000It seems that you do not have the materials needed to enhance this equipment.^000000";
+                close;
+            }
+            specialeffect2 EF_MAPPILLAR;
+			progressbar "ffff00",1;
+
+			// Consume materials
+			.@need_unlock = (!.@unlock[.@opt] && .@opt > 1);
+			if (.@max_val)
+				delitem(.item_id, 1);
+			Zeny -= .zenyFee * .@opt;
+			
+			// Generate random enchantment with proper bounds checking
+			.@opt_list_size = getarraysize(getd(.@var$));
+			.@opt_val_size = getarraysize(getd(.@val$));
+			
+			if (.@opt_list_size <= 0 || .@opt_val_size <= 0) {
+				clear;
+				callfunc "F_NPC_NAME";
+				mes "^FF0000Error: Invalid enchantment configuration for this tier.^000000";
+				close;
+			}
+			
+			.@rnd_idx = rand(.@opt_list_size);
+			.@idx = getd(sprintf("%s[%d]", .@var$, .@rnd_idx));
+			
+			// Determine value based on luck (33% chance for higher values)
+			.@rnd_high = rand(1,100);
+			
+			// For arrays with only 1 element, just use index 0
+			if (.@opt_val_size == 1) {
+				.@rnd_val = 0;
+			} else if (.@opt_val_size == 2) {
+				// For 2 elements, randomly pick 0 or 1
+				.@rnd_val = rand(2);
+			} else {
+				// For larger arrays, use weighted distribution
+				if (.@rnd_high > 33) {
+					// Lower chance - get from lower range (67% chance)
+					// Use indices 0 to (size-3)
+					.@max_range = .@opt_val_size - 2;
+					if (.@max_range < 1) .@max_range = 1;
+					.@rnd_val = rand(.@max_range);
+				} else {
+					// Higher chance - get from upper range (33% chance)
+					// Use indices (size-2) to (size-1)
+					.@min_idx = .@opt_val_size - 2;
+					.@max_idx = .@opt_val_size - 1;
+					if (.@min_idx < 0) .@min_idx = 0;
+					if (.@max_idx < 0) .@max_idx = 0;
+					// rand(x,y) returns x to y-1, so we need y to be max_idx+1
+					.@rnd_val = (.@min_idx == .@max_idx) ? .@min_idx : rand(.@min_idx, .@max_idx + 1);
+				}
+			}
+			
+			.@val = getd(sprintf("%s[%d]", .@val$, .@rnd_val));
+			
+			// Max value override
+			if (.@max_val)
+				.@val = getd(sprintf("%s[%d]", .@val$, .@opt_val_size - 1));
+			
+			// Special case handling for specific tiers
+			switch(.@opt) {
+				default:
+					break;
+
+				case 1:
+					if (.@idx == 17 || .@idx == 18 || .@idx == 19)
+						.@val = .@max_val ? 25 : (.@rnd_high > 5 ? rand(1,15) : rand(5, 25));
+					break;
+					
+				case 3:
+					if (.@idx == 297) {
+						.@val = .@max_val ? 3 : (.@rnd_high > 5 ? 1 : rand(1, 3));
+					} else if (.@idx == 15) {
+						.@val = .@max_val ? 5 : (.@rnd_high > 5 ? 1 : rand(1, 5));
+					}
+					break;
+			}
+			
+			.@opt_name$ = getd(sprintf(".opt_name%d$[%d]", .@opt, .@rnd_idx));
+            setrandomoption(.@part,.@opt-1,.@idx,.@val,1);
+            
+			clear;
+			callfunc "F_NPC_NAME";
+			mes "You have successfully";
+			mesf("enhanced your %s.", getitemname(.@itm));
+			mes " ";
+			mesf("^FF0000Tier %d:^000000", .@opt);
+			mesf(" - %s", sprintf(.@opt_name$, .@val));
+			break;
+			
+		case 2:
+			mes "soon";
+			close2;
+			break;
+	}
+	end;
+
+OnInit:
+	.allow_all_weapons = true;
+	.zenyFee = 100000;
+    .item_id = 501;
+	setarray .wep_tier[0], 1201, 5;
+
+	setarray .opt_list1[0], 3, 4, 5, 6, 7, 8, 17, 18, 19;
+	setarray .opt_list2[0], 9, 10, 14, 16, 166, 293, 296;
+	setarray .opt_list3[0], 148, 152, 104, 114, 97, 107, 98, 108, 99, 109, 100, 110, 101, 111, 102, 112, 103, 113, 105, 115, 106, 116, 297, 15;
+	setarray .opt_list4[0], 258, 259, 260, 261, 262, 263, 264, 265, 266, 267, 268, 269, 270, 271, 272, 273, 274, 275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 298;
+	setarray .opt_list5[0], 299, 164, 24, 300, 257;
+
+
+	setarray .opt_name1$[0], "STR +%d",
+                             "AGI +%d",
+                             "VIT +%d",
+                             "INT +%d",
+                             "DEX +%d",
+							 "LUK +%d",
+                             "ATK +%d",
+                             "HIT +%d",
+                             "MATK +%d";
+
+	setarray .opt_name2$[0], "MaxHP +%d%%",
+                             "MaxSP +%d%%",
+                             "MATK +%d%%",
+                             "Attack Speed +%d%%",
+                             "Long range physical attack +%d%%",
+                             "ATK +%d%%",
+                             "Hit Rate +%d%%";
+
+	setarray .opt_name3$[0], "ATK +%d%% against Boss monsters",
+                             "MATK +%d%% against Boss monsters",
+                             "ATK +%d%% against Demihuman monsters",
+                             "MATK +%d%% against Demihuman monsters",
+                             "ATK +%d%% against Formless monsters",
+                             "MATK +%d%% against Formless monsters",
+                             "ATK +%d%% against Undead monsters",
+                             "MATK +%d%% against Undead monsters",
+                             "ATK +%d%% against Brute monsters",
+                             "MATK +%d%% against Brute monsters",
+                             "ATK +%d%% against Plant monsters",
+                             "MATK +%d%% against Plant monsters",
+                             "ATK +%d%% against Insect monsters",
+                             "MATK +%d%% against Insect monsters",
+                             "ATK +%d%% against Fish monsters",
+                             "MATK +%d%% against Fish monsters",
+                             "ATK +%d%% against Demon monsters",
+                             "MATK +%d%% against Demon monsters",
+                             "ATK +%d%% against Angel monsters",
+                             "MATK +%d%% against Angel monsters",
+                             "ATK +%d%% against Dragon monsters",
+                             "MATK +%d%% against Dragon monsters",
+                             "All Stats +%d%",
+                             "Attack Speed +%d%";
+
+	setarray .opt_name4$[0], "Bowling Bash Damage +%d%%",
+                             "Spiral Pierce Damage +%d%%",
+                             "Sacrifice Damage +%d%%",
+                             "Shield Chain Damage +%d%%",
+                             "Sonic Blow Damage +%d%%",
+                             "Grimtooth Damage +%d%%",
+                             "Soul Destroyer Damage +%d%%",
+                             "Double Strafe Damage +%d%%",
+                             "Sharpshoot Damage +%d%%",
+                             "Falcon Assault Damage +%d%%",
+                             "Arrow Vulcan Damage +%d%%",
+                             "Musical Strike Damage +%d%%",
+                             "Throw Arrow Damage +%d%%",
+							 "Holy Light Damage +%d%%",
+                             "Finger Offensive Damage +%d%%",
+                             "Asura Strike Damage +%d%%",
+                             "Acid Demonstration Damage +%d%%",
+                             "Cart Termination Damage +%d%%",
+                             "Storm Gust Damage +%d%%",
+                             "Meteor Storm Damage +%d%%",
+                             "Lord of Vermilion Damage +%d%%",
+                             "Heaven's Drive Damage +%d%%",
+                             "Fire Bolt Damage +%d%%",
+                             "Cold Bolt Damage +%d%%",
+                             "Lightning Bolt Damage +%d%%",
+                             "Rapid Shower Damage +%d%%",
+                             "Desperado Damage +%d%%",
+                             "Full Buster Damage +%d%%",
+                             "Tracking Damage +%d%%",
+                             "First Wind Damage +%d%%",
+                             "Exploding Dragon Damage +%d%%",
+                             "Spear of Ice Damage +%d%%",
+                             "Lightning Jolt Damage +%d%%",
+                             "Final Strike Damage +%d%%",
+                             "Flying Side Kick Damage +%d%%",
+                             "Esma Damage +%d%%";
+                             
+
+
+	setarray .opt_name5$[0], "Perfect Hit +%d%%",
+                             "Critical Damage +%d%%",
+                             "Critical +%d%",
+                             "Critical Rate +%d%%",
+                             "Drop Rate +%d%%";
+
+    setarray .opt_val1[0], 1, 2, 3, 4, 5;
+	setarray .opt_val2[0], 1, 2, 3, 4, 5;
+	setarray .opt_val3[0], 1, 2, 3, 4, 5;
+	setarray .opt_val4[0], 3, 5, 7, 10, 3, 5, 7, 10;
+	setarray .opt_val5[0], 3, 5, 7, 10, 3, 5, 7, 10;
+
+    .Active = 1;
+    while( getvariableofnpc(.Active,"Weapon Enhancer") ) {
+    PUBTITLE:
+        freeloop(1);
+        showscript "Weapon Enhancer", getnpcid(0), AREA;			
+        sleep 1000; 
+        freeloop(0);
+        goto PUBTITLE;
+    }
+end;
+}

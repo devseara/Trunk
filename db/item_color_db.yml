@@ -1,0 +1,58 @@
+# This file is a part of rAthena.
+#   Copyright(C) 2021 rAthena Development Team
+#   https://rathena.org - https://github.com/rathena
+#   Copyright(C) 2026 Louis T Steinhil Development Team
+#   https://github.com/YlenXWalker
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+###########################################################################
+# Item Color Database
+###########################################################################
+#
+# Item Color Settings
+#
+###########################################################################
+# Item Color Database
+# Maps item names to custom display colors.
+# The client-side WARP QJS patch uses substring matching, so short distinctive
+# names work best (e.g. "Angra" matches "Angra Manyu").
+#
+# Format:
+#   - Item: <item name or substring>
+#     Color: <RRGGBB hex>
+#
+# Color format: RRGGBB (standard web hex). Examples:
+#   FF0000 = Red
+#   00FF00 = Green
+#   0000FF = Blue
+#   FFA500 = Orange
+#   DA70D6 = Orchid
+#   FFD700 = Gold
+#
+#   Common      = FFFFFF  (White)
+#   Uncommon    = 00FF00  (Green)
+#   Rare        = 0000FF  (Blue)
+#   Epic        = A020F0  (Purple)
+#   Legendary   = FFD700  (Gold)
+#   Mythic      = DC143C  (Crimson Red)
+###########################################################################
+
+Header:
+  Type: ITEM_COLOR_DB
+  Version: 1
+
+Footer:
+  Imports:
+    - Path: db/import/item_color_db.yml

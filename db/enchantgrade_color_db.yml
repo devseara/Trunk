@@ -1,0 +1,84 @@
+# This file is a part of rAthena.
+#   Copyright(C) 2021 rAthena Development Team
+#   https://rathena.org - https://github.com/rathena
+#   Copyright(C) 2026 Louis T Steinhil Development Team
+#   https://github.com/YlenXWalker
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+###########################################################################
+# Enchant Grade Color Database
+###########################################################################
+#
+# Enchant Grade Color Settings
+#
+###########################################################################
+# Maps enchant grade names to display colors and labels.
+#
+# The server sends these as _GRADE_<N>_<Label> sentinel entries through the
+# ZC_ITEM_COLOR_LIST (0x0BDD) packet. The WARP QJS patch extracts both
+# the grade number and the display label, so no grade tables are hardcoded
+# on either side.
+#
+# Format:
+#   - Grade: <number>          (1=Rare, 2=Epic, 3=Mythic, 4=Legendary, 5=S)
+#     Label: <display label without brackets>
+#     Color: <RRGGBB hex>
+#
+# Color format: RRGGBB (standard web hex). Examples:
+#   FF0000 = Red      00FF00 = Green     0000FF = Blue
+#   FFA500 = Orange   DA70D6 = Orchid    FFD700 = Gold
+#   DC143C = Crimson Red    A020F0 = Purple
+#
+# DEFAULT VALUES:
+#   Rare        = 0000FF  (Blue)
+#   Epic        = A020F0  (Purple)
+#   Mythic      = DC143C  (Crimson Red)
+#   Legendary   = FFD700  (Gold)
+#   S           = FFD700  (Gold)
+#
+# Adding new grades:
+#   1. Add the enum value in src/common/mmo.hpp (e.g. ENCHANTGRADE_ANCIENT = 6)
+#   2. Add an entry below (e.g. Grade: 6 / Label: Ancient / Color: FF8800)
+###########################################################################
+
+Header:
+  Type: ENCHANTGRADE_COLOR_DB
+  Version: 1
+
+# Grade numbers: 1=Rare, 2=Epic, 3=Mythic, 4=Legendary, 5=S
+Body:
+  - Grade: 1
+    Label: Rare
+    Color: 0000FF
+
+  - Grade: 2
+    Label: Epic
+    Color: A020F0
+
+  - Grade: 3
+    Label: Mythic
+    Color: DC143C
+
+  - Grade: 4
+    Label: Legendary
+    Color: FFD700
+
+  - Grade: 5
+    Label: S
+    Color: FFD700
+
+Footer:
+  Imports:
+    - Path: db/import/enchantgrade_color_db.yml

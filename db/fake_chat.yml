@@ -1,0 +1,345 @@
+# This file is a part of Shakto.
+#   Copyright(C) 2025 Shakto Script
+#   https://ronovelty.com/
+#
+###########################################################################
+# Fake Chat Database (Shakto) — Configuration & Intent Spec (EN)
+###########################################################################
+#
+# Overview
+# - This YAML drives an in-game auto-reply “fake chat” system.
+# - You define one global Config entry and multiple Intent entries.
+# - Runtime flow (high level):
+#   1) Message is normalized (lowercase, collapsed spaces).
+#   2) System decides whether to reply (probability + cooldowns + mentions).
+#   3) Aho-Corasick matcher scores intents by keyword hits (+ optional fuzzy).
+#   4) StateBoosts and per-intent constraints (MinHits/MinScore) are applied.
+#   5) Best intent is chosen (with TieBreakOrder for ties) and a reply is picked.
+#   6) Placeholders (:name, :map, :lvl, :dir, :mob) are filled; message is sent.
+#
+# File Layout
+# - Header: metadata (Type/Version).
+# - Body:
+#   - One “Config: true” map with global settings.
+#   - N “Intent” maps (name, keywords, replies, optional per-intent rules).
+#
+###########################################################################
+# Config (Body -> Config: true)
+###########################################################################
+# Language                      Display language tag (free text).
+# ReplyProbabilityBase          Base probability to reply when NOT mentioned (0..1).
+# ReplyProbabilityOnMention     Probability to reply when mentioned or PM (0..1).
+# CooldownMsSelf                Minimum ms between two bot messages (global bot rate-limit).
+# CooldownMsPerPlayer           Minimum ms between two replies to the SAME player.
+# MaxTurnsWithSamePlayer        Max consecutive exchanges with the same player (anti ping-pong).
+# TypingSpeedCPSMin/Max         Simulated typing speed (characters per second) to compute delay.
+# UnknownIntentFallbackWeight   Weight to consider UNKNOWN when no other intent scores > 0.
+#
+# FuzzyDefault                  Global fuzzy matching policy (optional).
+#   Enabled                     Enable/disable fuzzy matching globally.
+#   Bonus                       Score added when a short keyword is matched by Levenshtein≤1.
+#   MaxTokenLen                 Only tokens/keywords up to this length receive fuzzy bonus.
+#   ExcludeIntents              List of intent names to exclude from fuzzy (e.g., GREET, ACK).
+#   MaxPerIntent                Max number of fuzzy bonuses applied per intent (per message).
+#
+# TieBreakOrder                 Ordered list of intent names. When multiple intents reach
+#                               the same top score, the first appearing here wins. Omit or
+#                               leave empty to use “first max” behavior.
+#
+# StateBoosts                   Per-bot-state multiplicative modifiers on intent scores.
+#   <StateName>                 e.g., Farming / Vending / Walking / Town (engine-provided).
+#     <IntentName>: <mult>      Multiplier applied to that intent when bot is in this state.
+#
+# (Optional) ChannelBias (if enabled in code)
+#   Default: { GLOBAL: p, PM: q }   Probabilities (0..1) to pick a channel when replying.
+#   <Intent>: { GLOBAL: p, PM: q }  Per-intent override of channel selection.
+#
+###########################################################################
+# Intent Entries (Body -> - Intent: NAME)
+###########################################################################
+# Intent                        Intent (category) name (unique).
+# Weight                        Base weight used per keyword hit (each hit adds max(1, Weight)).
+#
+# Keywords                      List of phrases/words to detect for this intent.
+#                               Matching is done via Aho-Corasick over normalized text.
+#                               Short keywords (<= MaxTokenLen) may receive fuzzy bonus
+#                               if allowed (see AllowFuzzy / FuzzyDefault).
+#
+# Replies                       Candidate outputs for this intent. Each entry is either:
+#   - a plain string (equal weight), or
+#   - a map: { Text: "...", Weight: <0..1> } for weighted selection.
+#
+#   Placeholders in replies are replaced at runtime:
+#     :name   -> source player name
+#     :map    -> bot’s current map name
+#     :lvl    -> bot’s current base level
+#     :dir    -> a short direction hint (e.g., “south”, may be empty)
+#     :mob    -> last focused mob name (may be empty)
+#     :class  -> Bot’s class/job short label (e.g., "wizard")
+#     :price  -> Market/PC estimate (number/text) for PRICE replies
+#   NOTE: The engine post-cleans empty placeholders (e.g., removes “()”, extra spaces).
+#
+# Optional per-intent rules (data-driven control, no code changes needed):
+# MinHits                      Require at least this many keyword hits for the intent to qualify.
+# MinScore                     Require at least this total score after AC/fuzzy (before/after boosts).
+# AllowFuzzy                   Enable fuzzy matching for this intent (default: true unless excluded globally).
+# FuzzyBonus                   Override global fuzzy bonus (per intent).
+# MaxFuzzyTokenLen             Override global MaxTokenLen for this intent.
+# MaxFuzzyPerIntent            Override global MaxPerIntent for this intent.
+#
+###########################################################################
+# Scoring Details (how intents are selected)
+###########################################################################
+# - AC pass: for each keyword occurrence, score += max(1.0, Weight).
+# - Fuzzy (short tokens only):
+#     * Applied only if enabled (global + per-intent).
+#     * Token/keyword must be alphanumeric and ≤ MaxTokenLen, Levenshtein distance ≤ 1.
+#     * Score += Bonus (global or per-intent), at most MaxPerIntent times.
+#     * Some generic intents (e.g., GREET/ACK) are often excluded to avoid false positives.
+# - StateBoosts: final score *= multiplier based on the bot’s current state.
+# - Filters: intents not meeting MinHits / MinScore are discarded (score set to 0).
+# - TieBreakOrder: if multiple intents tie at the top score, the first listed wins.
+# - Fallback: if nothing qualifies, UNKNOWN is chosen (if present).
+#
+###########################################################################
+# Reply Decision (should we reply at all?)
+###########################################################################
+# - Mention detection: PMs or messages containing the bot’s name count as “mentioned”.
+# - Reply probability: uses ReplyProbabilityOnMention when mentioned, otherwise ReplyProbabilityBase.
+# - Cooldowns: both global (bot) and per-player cooldowns must have elapsed.
+# - Conversation cap: won’t exceed MaxTurnsWithSamePlayer consecutive turns.
+#
+###########################################################################
+# Good Practices
+###########################################################################
+# - Keep generic intents (GREET/ACK) conservative:
+#     * Avoid single-letter keywords (e.g., “k”) to prevent substring noise.
+#     * Consider AllowFuzzy: false for GREET/ACK, and use MinHits if needed.
+# - Prefer richer keywords for thematic intents (PRICE, TRADE, LOCATION, FARM_QUERY).
+# - Add reply variants to reduce repetition; mix placeholders and plain text.
+# - Tune StateBoosts to reflect believable behavior per bot state (e.g., PRICE↑ in Vending).
+# - Use TieBreakOrder to nudge ambiguous messages toward practical intents (LOCATION before GREET).
+#
+###########################################################################
+# Troubleshooting
+###########################################################################
+# - Seeing too many greetings? Lower GREET influence:
+#     * GREET.AllowFuzzy: false, or increase GREET.MinHits.
+# - ANSWERS look “empty” (e.g., “near :map ()”)? Add placeholder-safe replies and rely on cleaner.
+# - UNKNOWN too frequent? Lower MinHits/MinScore on relevant intents or raise UnknownIntentFallbackWeight.
+# - Too silent or too chatty? Adjust ReplyProbabilityBase (and OnMention) and/or cooldowns.
+###########################################################################
+
+Header:
+  Type: FAKE_CHAT_DB
+  Version: 1
+
+Body:
+  # ---- Config (entrée spéciale dans Body) ----
+  - Config: true
+    Language: "EN"
+    ReplyProbabilityBase: 0.50
+    ReplyProbabilityOnMention: 0.85
+    CooldownMsSelf: 4500
+    CooldownMsPerPlayer: 6000
+    MaxTurnsWithSamePlayer: 3
+    TypingSpeedCPSMin: 8
+    TypingSpeedCPSMax: 16
+    UnknownIntentFallbackWeight: 0.1
+    FuzzyDefault:
+      Enabled: true
+      Bonus: 0.8
+      MaxTokenLen: 3
+      ExcludeIntents: ["GREET","ACK"]
+      MaxPerIntent: 1
+    TieBreakOrder: ["PRICE","TRADE","LOCATION","FARM_QUERY","SMALL_TALK","HOW_ARE_YOU","GREET","ACK","BYE","THANKS"]
+    StateBoosts:
+      Farming:
+        FARM_QUERY: 1.6
+        TRADE: 0.7
+        SMALL_TALK: 1.0
+        HEAL_REQUEST: 2.0
+      Vending:
+        TRADE: 1.8
+        PRICE: 1.6
+        FARM_QUERY: 0.6
+      Walking:
+        GREET: 1.0
+        ACK: 1.2
+        LONG_CHAT: 0.6
+      Town:
+        SMALL_TALK: 1.2
+        HOW_ARE_YOU: 1.2
+  - Intent: GREET
+    Weight: 1.0
+    Keywords: ["hi","hello","hey","yo","sup","greetings","good morning","good evening"]
+    Replies:
+      - "hey :name"
+      - "hello!"
+      - "yo :)"
+      - { Text: "hi there", Weight: 0.7 }
+      - { Text: "hey there", Weight: 0.6 }
+      - { Text: "hey, what's up?", Weight: 0.5 }
+    MinHits: 1
+    MinScore: 0.0
+    AllowFuzzy: false
+  - Intent: HOW_ARE_YOU
+    Weight: 1.0
+    Keywords: ["how are you","you good","u ok","how's it going","how u doing","what's up","sup"]
+    Replies:
+      - "doing fine, you?"
+      - "all good here—what about you?"
+      - "pretty chill, and you?"
+      - { Text: "testing a spot in :map, not bad", Weight: 0.8 }
+  - Intent: SMALL_TALK
+    Weight: 1.0
+    Keywords: ["what are you doing","what u doing","what you up to","anything fun","what's new","how's things"]
+    Replies:
+      - "just hanging in :map"
+      - "wandering around a bit ^^"
+      - "waiting for party, you?"
+      - "sorting my stash then heading out"
+  - Intent: FARM_QUERY
+    Weight: 1.0
+    Keywords: ["farm","grind","leveling","xp","exp","spot","drop","loot"]
+    Replies:
+      - "yeah, farming :mob near :map"
+      - "doing some xp, lvl :lvl right now"
+      - "testing a spot in :map, not bad"
+      - "looking for better drops, any tip?"
+      - "farming near :map for a bit"
+  - Intent: LFG
+    Weight: 0.9
+    Keywords: ["lfg","party?","need party","join party","invite","spot party"]
+    Replies:
+      - "up for party at :map"
+      - "i can join, :class :lvl"
+      - "invite? i can support"
+  - Intent: GUILD
+    Weight: 0.8
+    Keywords: ["guild","join guild","recruit","any guild","guild invite"]
+    Replies:
+      - "looking for a casual guild"
+      - "any recruitment going on?"
+      - "what's your guild like?"
+  - Intent: TRADE
+    Weight: 1.0
+    Keywords: ["sell","buy","trade","wts","wtb","price?","offer"]
+    Replies:
+      - "selling some stuff, pm offer"
+      - "what's your price?"
+      - "might buy if fair"
+  - Intent: PRICE
+    Weight: 0.8
+    Keywords: ["how much","price","cost","worth","pc","check price"]
+    Replies:
+      - "last seen ~:price z"
+      - "depends on refine, i'd say around :price"
+      - "market swings a bit"
+    MinHits: 1
+    MinScore: 1.0
+    AllowFuzzy: true
+    FuzzyBonus: 0.8          # override du global si voulu
+    MaxFuzzyTokenLen: 2
+    MaxFuzzyPerIntent: 1
+  - Intent: CLASS_BUILD
+    Weight: 0.8
+    Keywords: ["build","stats","skill build","str agi vit","dex int luk"]
+    Replies:
+      - "running a simple :class build"
+      - "thinking to respec soon"
+      - "any tips for :class at :lvl?"
+      - "agi/crit early is solid; add some vit later"
+  - Intent: LOCATION
+    Weight: 0.8
+    Keywords: ["where are you","where r u","map?","where to","how to go"]
+    Replies:
+      - "in :map right now"
+      - "heading :dir from town"
+      - "tp scroll then south"
+  - Intent: HELP
+    Weight: 0.7
+    Keywords: ["help","how to","stuck","idk","newbie","beginner"]
+    Replies:
+      - "what do you need?"
+      - "can try to help, what's up?"
+      - "ask away :)"
+  - Intent: COMPLIMENT
+    Weight: 0.5
+    Keywords: ["nice","cool","gg","well played","good job"]
+    Replies:
+      - "ty!"
+      - "appreciated :)"
+      - "thanks!"
+  - Intent: INSULT_FILTER
+    Weight: 1.0
+    Keywords: ["idiot","noob","trash","stupid","die","report"]
+    Replies:
+      - "chill pls"
+  - Intent: ACK
+    Weight: 0.6
+    Keywords: ["ok","kk","sure","got it","alright","fine"]
+    Replies:
+      - "ok"
+      - "kk"
+      - "gotcha"
+  - Intent: BYE
+    Weight: 0.6
+    Keywords: ["bye","cya","see ya","good night","gn"]
+    Replies:
+      - "cya"
+      - "gn"
+      - "later!"
+  - Intent: LONG_CHAT
+    Weight: 0.5
+    Keywords: ["story","tell me","explain","why","because"]
+    Replies:
+      - "hard to explain here"
+      - "long story short—later :)"
+      - "we can chat later"
+  - Intent: THANKS
+    Weight: 0.6
+    Keywords: ["ty","thanks","thank you","thx","appreciate it"]
+    Replies:
+      - "np!"
+      - "you're welcome"
+      - "anytime :)"
+  - Intent: BOSS_MVP
+    Weight: 0.7
+    Keywords: ["mvp","boss","mini boss","timer","spawn"]
+    Replies:
+      - "timer might be up soon"
+      - "need party for that one"
+  - Intent: HEAL_REQUEST
+    Weight: 0.6
+    Keywords: ["heal pls","need heal","hp low","can you heal"]
+    Replies:
+      - "busy sry"
+  - Intent: BUFF_REQUEST
+    Weight: 0.6
+    Keywords: ["buff pls","need buff","bless","agi up","increase agi","blessing"]
+    Replies:
+      - "busy sry"
+  - Intent: REZ_REQUEST
+    Weight: 0.6
+    Keywords: ["rez pls","res pls","resurrect","revive","help dead"]
+    Replies:
+      - "No blue gem anymore"
+      - "Out of blue gem / leaf"
+  - Intent: SORRY
+    Weight: 0.5
+    Keywords: ["sorry","sry","my bad","apologies"]
+    Replies:
+      - "no worries"
+      - "all good"
+      - "it's fine :)"
+  - Intent: UNKNOWN
+    Weight: 0.2
+    Keywords: []
+    Replies:
+      - "haha"
+      - "lol"
+      - "hmm"
+      - "?"
+      - "I didn't get"
+      - "not sure I follow"

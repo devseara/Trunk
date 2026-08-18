@@ -1,0 +1,1056 @@
+# This file is a part of Shakto.
+#   Copyright(C) 2025 Shakto Script
+#   https://ronovelty.com/
+#
+###########################################################################
+# Fake Players Database (Shakto) — Profiles, Curves & Spawn Semantics (EN)
+###########################################################################
+#
+# Overview
+# - This YAML controls how many fake players (bots) are active, which job
+#   profiles they use, where they spawn/idle in towns, and which behaviors
+#   they run. Each top-level entry under Body is a *population profile*
+#   (e.g., “novice_world”, “starter_world”).
+#
+# File Layout
+# - Header:
+#     Type: FAKE_PLAYERS_DB
+#     Version: 1
+# - Body:
+#     A list of Profiles maps (schema below).
+#
+###########################################################################
+# Profiles entry (schema)
+###########################################################################
+# Profiles                 Unique population profile id (string).
+#
+# LevelMin / LevelMax      Inclusive base-level range for bots created by this
+#                          population profile. (Job profile stats/gear still
+#                          come from FAKE_JOBPROFILS_DB.)
+#
+# Curve                    Time-of-day/week scaling for target population.
+#   Enabled                Toggle curve application (true/false).
+#   SmoothingMinutes       Time window to smooth target changes; avoids sharp
+#                          jumps when the hourly target changes.
+#   WeekendBoost           Multiplier applied on weekend days in addition to the
+#                          WeekendProfile (e.g., 1.10 = 10%).
+#   PercLow                Lower cap as percent of the base Number (e.g., 10=10%).
+#   PercHigh               Upper cap as percent of the base Number (e.g., 150=150%).
+#   HourlyProfile          24 integers for Mon–Fri target shape (index 0..23 hours).
+#   WeekendProfile         24 integers for Sat–Sun target shape (index 0..23 hours).
+# Notes:
+# - The engine derives a *time-weight* from HourlyProfile/WeekendProfile based on
+#   local server hour; WeekendBoost is then applied on weekend days.
+# - Final per-bucket targets are clamped by PercLow/PercHigh relative to configured
+#   base “Number” weights (see JobProfiles/Towns/Behaviors).
+# - SmoothingMinutes interpolates between previous and next targets.
+#
+# JobProfiles              Weighted selection of job templates to instantiate.
+#   - JobProfile           Id from FAKE_JOBPROFILS_DB (must exist).
+#     Number               Relative weight (integer). Larger = more frequent.
+# Notes:
+# - Weights are relative; probability ≈ weight / sum(weights).
+# - Use this to control class mix (e.g., more common jobs get higher weights).
+#
+# Towns                    Weighted list of spawn/idle rectangles in towns.
+#   - Map                  Town map id (e.g., prontera, payon, geffen, izlude).
+#     Number               Relative weight for selecting this town.
+#     Startx/Starty        Top-left corner (inclusive) of the rectangle.
+#     Endx/Endy            Bottom-right corner (inclusive) of the rectangle.
+# Notes:
+# - The engine picks a town by weight, then a random point inside [Start..End].
+# - Provide multiple rectangles per town to diversify spawn clustering.
+#
+# Names                    Path to a text file with candidate character names.
+#                          The engine draws from this file when creating bots.
+#
+# Behaviors                Weighted behaviors assigned to bots of this profile.
+#   - Behavior             Behavior id (e.g., "grind", "afk_town").
+#     Number               Relative weight (integer). Larger = more frequent.
+#
+###########################################################################
+# Weighting & Targets — How numbers interact
+###########################################################################
+# - All “Number” fields are *relative weights* inside their list:
+#     * JobProfiles → class mix.
+#     * Towns       → town distribution and spawn rectangles.
+#     * Behaviors   → behavior mix.
+# - The population *Curve* shapes “how many” bots should be active over time.
+#   Internally, the curve weight for the current hour/day is combined with
+#   configured base weights and then clamped by PercLow/PercHigh.
+# - SmoothingMinutes linearly eases toward the new target to prevent spikes
+#   at the top of the hour.
+#
+###########################################################################
+# Recommended conventions
+###########################################################################
+# - Keep weights small (e.g., 6..100) for readability; scale uniformly if needed.
+# - Fill HourlyProfile/WeekendProfile with 24 values each; use gentle slopes.
+# - Use multiple Town rectangles to avoid overcrowding a single cell range.
+# - Tie Profiles.LevelMin/Max to the job profiles you assign (e.g., novice_world
+#   spans low levels; starter_world overlaps into 10–25).
+#
+###########################################################################
+# Troubleshooting
+###########################################################################
+# - “Bots not appearing in town X”: raise Towns[Map=X].Number or add more rectangles.
+# - “Too many/few bots at certain hours”: adjust HourlyProfile/WeekendProfile,
+#   WeekendBoost, or PercLow/PercHigh; increase SmoothingMinutes for slower ramps.
+# - “Wrong class mix”: tune JobProfiles weights.
+# - “Everyone grinding / everyone idle”: tune Behaviors weights (grind vs afk_town).
+#
+###########################################################################
+# Example (abridged)
+###########################################################################
+# - Profiles: starter_world
+#   LevelMin: 10
+#   LevelMax: 25
+#   Curve:
+#     Enabled: true
+#     SmoothingMinutes: 20
+#     WeekendBoost: 1.25
+#     PercLow: 20
+#     PercHigh: 150
+#     HourlyProfile:   [ ...24 ints... ]
+#     WeekendProfile:  [ ...24 ints... ]
+#   JobProfiles:
+#     - { JobProfile: swordman_starter, Number: 100 }
+#     - { JobProfile: mage_starter,     Number: 100 }
+#     - { JobProfile: gunslinger_starter, Number: 30 }
+#   Towns:
+#     - { Map: prontera, Number: 30, Startx: 140, Starty: 192, Endx: 171, Endy: 160 }
+#     - { Map: payon,    Number: 25, Startx: 155, Starty: 121, Endx: 188, Endy: 93 }
+#   Names: fake_player_name.txt
+#   Behaviors:
+#     - { Behavior: grind,    Number: 90 }
+#     - { Behavior: afk_town, Number: 10 }
+###########################################################################
+
+Header:
+  Type: FAKE_PLAYERS_DB
+  Version: 1
+
+Body:
+  - Profiles: training_world
+    LevelMin: 1
+    LevelMax: 1
+    Curve:
+      Enabled: false
+    JobProfiles:
+      - JobProfile: training_ground
+        Number: 0
+    Towns:
+      - Map: new_1-1
+        Number: 100
+        Startx: 42
+        Starty: 76
+        Endx: 77
+        Endy: 155
+    Names: fake_player_name.txt
+    Behaviors:
+      - Behavior: training_ground
+        Number: 0
+  - Profiles: novice_world
+    LevelMin: 1
+    LevelMax: 1
+    Curve:
+      Enabled: false
+      SmoothingMinutes: 20
+      WeekendBoost: 1.10
+      PercLow: 10   #means 10% of Number
+      PercHigh: 100 #means 100% of Number
+      HourlyProfile: [  8,  6,  5,  5,  6,  8, 12, 18, 22, 28, 32, 35, 38, 40, 42, 46, 55, 65, 75, 85, 90, 80, 50, 25 ]
+      WeekendProfile: [  6,  5,  5,  5,  6, 10, 14, 22, 28, 36, 42, 48, 52, 55, 58, 62, 72, 85, 95, 100, 95, 85, 60, 35 ]
+    JobProfiles:
+      - JobProfile: novice_starter
+        Number: 0
+    Towns:
+      - Map: prontera
+        Number: 40
+        Startx: 140
+        Starty: 192
+        Endx: 171
+        Endy: 160
+      - Map: payon
+        Number: 25
+        Startx: 155
+        Starty: 121
+        Endx: 188
+        Endy: 93
+      - Map: geffen
+        Number: 20
+        Startx: 97
+        Starty: 70
+        Endx: 138
+        Endy: 38
+      - Map: izlude
+        Number: 25
+        Startx: 113
+        Starty: 149
+        Endx: 145
+        Endy: 128
+    Names: fake_player_name.txt
+    Behaviors:
+      - Behavior: grind
+        Number: 0
+      - Behavior: afk_town
+        Number: 0
+  - Profiles: tambay1stjob_world
+    LevelMin: 10
+    LevelMax: 25
+    Curve:
+      Enabled: false
+      SmoothingMinutes: 20
+      WeekendBoost: 1.25
+      PercLow: 20   #means 10% of Number
+      PercHigh: 150 #means 130% of Number
+      HourlyProfile: [  8,  6,  5,  5,  6,  8, 12, 18, 22, 28, 32, 35, 38, 40, 42, 46, 55, 65, 75, 85, 90, 80, 50, 25 ]
+      WeekendProfile: [  6,  5,  5,  5,  6, 10, 14, 22, 28, 36, 42, 48, 52, 55, 58, 62, 72, 85, 95, 100, 95, 85, 60, 35 ]
+    JobProfiles:
+      - JobProfile: swordman_starter
+        Number: 0
+      - JobProfile: mage_starter
+        Number: 0
+      - JobProfile: archer_starter
+        Number: 0
+      - JobProfile: acolyte_starter
+        Number: 0
+      - JobProfile: merchant_starter
+        Number: 0
+      - JobProfile: thief_starter
+        Number: 0
+    Towns:
+      - Map: prontera
+        Number: 10
+        Startx: 139
+        Starty: 98
+        Endx: 162
+        Endy: 79
+      - Map: prontera
+        Number: 10
+        Startx: 139
+        Starty: 98
+        Endx: 162
+        Endy: 79
+      - Map: payon
+        Number: 25
+        Startx: 155
+        Starty: 121
+        Endx: 188
+        Endy: 93
+      - Map: geffen
+        Number: 10
+        Startx: 98
+        Starty: 72
+        Endx: 138
+        Endy: 38
+      - Map: geffen
+        Number: 10
+        Startx: 184
+        Starty: 115
+        Endx: 194
+        Endy: 102
+      - Map: geffen
+        Number: 10
+        Startx: 179
+        Starty: 132
+        Endx: 201
+        Endy: 117
+      - Map: geffen
+        Number: 10
+        Startx: 37
+        Starty: 131
+        Endx: 56
+        Endy: 107
+      - Map: izlude
+        Number: 25
+        Startx: 113
+        Starty: 149
+        Endx: 145
+        Endy: 128
+      - Map: morocc
+        Number: 10
+        Startx: 148
+        Starty: 108
+        Endx: 169
+        Endy: 84
+    Names: fake_player_name.txt
+    Behaviors:
+      - Behavior: afk_town
+        Number: 90
+  - Profiles: perma_training
+    LevelMin: 1
+    LevelMax: 2
+    Curve:
+      Enabled: false
+      SmoothingMinutes: 20
+      WeekendBoost: 1.10
+      PercLow: 10   #means 10% of Number
+      PercHigh: 100 #means 100% of Number
+      HourlyProfile: [  8,  6,  5,  5,  6,  8, 12, 18, 22, 28, 32, 35, 38, 40, 42, 46, 55, 65, 75, 85, 90, 80, 50, 25 ]
+      WeekendProfile: [  6,  5,  5,  5,  6, 10, 14, 22, 28, 36, 42, 48, 52, 55, 58, 62, 72, 85, 95, 100, 95, 85, 60, 35 ]
+    JobProfiles:
+      - JobProfile: training_ground2
+        Number: 0
+    Towns:
+      - Map: prontera
+        Number: 40
+        Startx: 140
+        Starty: 192
+        Endx: 171
+        Endy: 160
+    Names: fake_player_name.txt
+    Behaviors:
+      - Behavior: grind
+        Number: 100
+  - Profiles: melee_world
+    LevelMin: 60
+    LevelMax: 70
+    Curve:
+      Enabled: false
+      SmoothingMinutes: 20
+      WeekendBoost: 1.25
+      PercLow: 20   #means 10% of Number
+      PercHigh: 150 #means 130% of Number
+      HourlyProfile: [  8,  6,  5,  5,  6,  8, 12, 18, 22, 28, 32, 35, 38, 40, 42, 46, 55, 65, 75, 85, 90, 80, 50, 25 ]
+      WeekendProfile: [  6,  5,  5,  5,  6, 10, 14, 22, 28, 36, 42, 48, 52, 55, 58, 62, 72, 85, 95, 100, 95, 85, 60, 35 ]
+    JobProfiles:
+      - JobProfile: knight_starter
+        Number: 0
+      - JobProfile: assassin_starter
+        Number: 0
+      - JobProfile: blacksmith_starter
+        Number: 0
+      - JobProfile: rogue_starter
+        Number: 0
+    Towns:
+      - Map: prontera
+        Number: 10
+        Startx: 139
+        Starty: 98
+        Endx: 162
+        Endy: 79
+    Names: fake_player_name.txt
+    Behaviors:
+      - Behavior: grind
+        Number: 1000
+  - Profiles: meleetrans_world
+    LevelMin: 60
+    LevelMax: 70
+    Curve:
+      Enabled: false
+      SmoothingMinutes: 20
+      WeekendBoost: 1.25
+      PercLow: 20   #means 10% of Number
+      PercHigh: 150 #means 130% of Number
+      HourlyProfile: [  8,  6,  5,  5,  6,  8, 12, 18, 22, 28, 32, 35, 38, 40, 42, 46, 55, 65, 75, 85, 90, 80, 50, 25 ]
+      WeekendProfile: [  6,  5,  5,  5,  6, 10, 14, 22, 28, 36, 42, 48, 52, 55, 58, 62, 72, 85, 95, 100, 95, 85, 60, 35 ]
+    JobProfiles:
+      - JobProfile: whitesmith_starter
+        Number: 0
+      - JobProfile: stalker_starter
+        Number: 0
+      - JobProfile: sinx_starter
+        Number: 0
+      - JobProfile: lk_starter
+        Number: 0
+    Towns:
+      - Map: prontera
+        Number: 10
+        Startx: 139
+        Starty: 98
+        Endx: 162
+        Endy: 79
+    Names: fake_player_name.txt
+    Behaviors:
+      - Behavior: grind
+        Number: 1000
+  - Profiles: gh_world
+    LevelMin: 40
+    LevelMax: 50
+    Curve:
+      Enabled: false
+      SmoothingMinutes: 20
+      WeekendBoost: 1.25
+      PercLow: 20   #means 10% of Number
+      PercHigh: 150 #means 130% of Number
+      HourlyProfile: [  8,  6,  5,  5,  6,  8, 12, 18, 22, 28, 32, 35, 38, 40, 42, 46, 55, 65, 75, 85, 90, 80, 50, 25 ]
+      WeekendProfile: [  6,  5,  5,  5,  6, 10, 14, 22, 28, 36, 42, 48, 52, 55, 58, 62, 72, 85, 95, 100, 95, 85, 60, 35 ]
+    JobProfiles:
+      - JobProfile: acolyte_gl
+        Number: 0
+      - JobProfile: archer_gl
+        Number: 0
+      - JobProfile: mage_gl
+        Number: 0
+    Towns:
+      - Map: prontera
+        Number: 10
+        Startx: 139
+        Starty: 98
+        Endx: 162
+        Endy: 79
+    Names: fake_player_name.txt
+    Behaviors:
+      - Behavior: grind
+        Number: 90
+  - Profiles: mummy_world
+    LevelMin: 40
+    LevelMax: 50
+    Curve:
+      Enabled: false
+      SmoothingMinutes: 20
+      WeekendBoost: 1.25
+      PercLow: 20   #means 10% of Number
+      PercHigh: 150 #means 130% of Number
+      HourlyProfile: [  8,  6,  5,  5,  6,  8, 12, 18, 22, 28, 32, 35, 38, 40, 42, 46, 55, 65, 75, 85, 90, 80, 50, 25 ]
+      WeekendProfile: [  6,  5,  5,  5,  6, 10, 14, 22, 28, 36, 42, 48, 52, 55, 58, 62, 72, 85, 95, 100, 95, 85, 60, 35 ]
+    JobProfiles:
+      - JobProfile: acolyte_mummy
+        Number: 0
+      - JobProfile: archer_mummy
+        Number: 0
+      - JobProfile: mage_mummy
+        Number: 0
+    Towns:
+      - Map: prontera
+        Number: 10
+        Startx: 139
+        Starty: 98
+        Endx: 162
+        Endy: 79
+    Names: fake_player_name.txt
+    Behaviors:
+      - Behavior: grind
+        Number: 90
+  - Profiles: tambaynovice_world
+    LevelMin: 10
+    LevelMax: 15
+    Curve:
+      Enabled: false
+      SmoothingMinutes: 20
+      WeekendBoost: 1.25
+      PercLow: 20   #means 10% of Number
+      PercHigh: 150 #means 130% of Number
+      HourlyProfile: [  8,  6,  5,  5,  6,  8, 12, 18, 22, 28, 32, 35, 38, 40, 42, 46, 55, 65, 75, 85, 90, 80, 50, 25 ]
+      WeekendProfile: [  6,  5,  5,  5,  6, 10, 14, 22, 28, 36, 42, 48, 52, 55, 58, 62, 72, 85, 95, 100, 95, 85, 60, 35 ]
+    JobProfiles:
+      - JobProfile: training_ground2
+        Number: 0
+    Towns:
+      - Map: prontera
+        Number: 10
+        Startx: 149
+        Starty: 100
+        Endx: 162
+        Endy: 83
+      - Map: payon
+        Number: 25
+        Startx: 155
+        Starty: 121
+        Endx: 188
+        Endy: 93
+      - Map: geffen
+        Number: 10
+        Startx: 127
+        Starty: 64
+        Endx: 141
+        Endy: 46
+      - Map: geffen
+        Number: 10
+        Startx: 100
+        Starty: 52
+        Endx: 120
+        Endy: 35
+      - Map: geffen
+        Number: 10
+        Startx: 185
+        Starty: 127
+        Endx: 195
+        Endy: 115
+      - Map: geffen
+        Number: 10
+        Startx: 43
+        Starty: 127
+        Endx: 55
+        Endy: 114
+      - Map: izlude
+        Number: 10
+        Startx: 121
+        Starty: 115
+        Endx: 131
+        Endy: 88
+      - Map: morocc
+        Number: 10
+        Startx: 151
+        Starty: 104
+        Endx: 167
+        Endy: 88
+    Names: fake_player_name.txt
+    Behaviors:
+      - Behavior: afk_town
+        Number: 90
+  - Profiles: tambaysecondclass_world
+    LevelMin: 55
+    LevelMax: 60
+    Curve:
+      Enabled: false
+      SmoothingMinutes: 20
+      WeekendBoost: 1.25
+      PercLow: 20   #means 10% of Number
+      PercHigh: 150 #means 130% of Number
+      HourlyProfile: [  8,  6,  5,  5,  6,  8, 12, 18, 22, 28, 32, 35, 38, 40, 42, 46, 55, 65, 75, 85, 90, 80, 50, 25 ]
+      WeekendProfile: [  6,  5,  5,  5,  6, 10, 14, 22, 28, 36, 42, 48, 52, 55, 58, 62, 72, 85, 95, 100, 95, 85, 60, 35 ]
+    JobProfiles:
+      - JobProfile: knight_starter
+        Number: 0
+      - JobProfile: assassin_starter
+        Number: 0
+      - JobProfile: blacksmith_starter
+        Number: 0
+      - JobProfile: rogue_starter
+        Number: 0
+      - JobProfile: hunter_starter
+        Number: 0
+      - JobProfile: priest_starter
+        Number: 0
+    Towns:
+      - Map: prontera
+        Number: 10
+        Startx: 149
+        Starty: 100
+        Endx: 162
+        Endy: 83
+      - Map: payon
+        Number: 25
+        Startx: 155
+        Starty: 121
+        Endx: 188
+        Endy: 93
+      - Map: geffen
+        Number: 10
+        Startx: 127
+        Starty: 64
+        Endx: 141
+        Endy: 46
+      - Map: geffen
+        Number: 10
+        Startx: 100
+        Starty: 52
+        Endx: 120
+        Endy: 35
+      - Map: geffen
+        Number: 10
+        Startx: 185
+        Starty: 127
+        Endx: 195
+        Endy: 115
+      - Map: geffen
+        Number: 10
+        Startx: 43
+        Starty: 127
+        Endx: 55
+        Endy: 114
+      - Map: izlude
+        Number: 10
+        Startx: 121
+        Starty: 115
+        Endx: 131
+        Endy: 88
+      - Map: morocc
+        Number: 10
+        Startx: 151
+        Starty: 104
+        Endx: 167
+        Endy: 88
+    Names: fake_player_name.txt
+    Behaviors:
+      - Behavior: afk_town
+        Number: 90
+  - Profiles: 1stjobbak_world
+    LevelMin: 15
+    LevelMax: 20
+    Curve:
+      Enabled: false
+      SmoothingMinutes: 20
+      WeekendBoost: 1.25
+      PercLow: 20   #means 10% of Number
+      PercHigh: 150 #means 130% of Number
+      HourlyProfile: [  8,  6,  5,  5,  6,  8, 12, 18, 22, 28, 32, 35, 38, 40, 42, 46, 55, 65, 75, 85, 90, 80, 50, 25 ]
+      WeekendProfile: [  6,  5,  5,  5,  6, 10, 14, 22, 28, 36, 42, 48, 52, 55, 58, 62, 72, 85, 95, 100, 95, 85, 60, 35 ]
+    JobProfiles:
+      - JobProfile: swordman_starter
+        Number: 0
+      - JobProfile: mage_starter
+        Number: 0
+      - JobProfile: archer_starter
+        Number: 0
+      - JobProfile: acolyte_starter
+        Number: 0
+      - JobProfile: merchant_starter
+        Number: 0
+      - JobProfile: thief_starter
+        Number: 0
+    Towns:
+      - Map: prontera
+        Number: 10
+        Startx: 149
+        Starty: 100
+        Endx: 162
+        Endy: 83
+      - Map: payon
+        Number: 25
+        Startx: 155
+        Starty: 121
+        Endx: 188
+        Endy: 93
+      - Map: geffen
+        Number: 10
+        Startx: 127
+        Starty: 64
+        Endx: 141
+        Endy: 46
+      - Map: geffen
+        Number: 10
+        Startx: 100
+        Starty: 52
+        Endx: 120
+        Endy: 35
+      - Map: geffen
+        Number: 10
+        Startx: 185
+        Starty: 127
+        Endx: 195
+        Endy: 115
+      - Map: geffen
+        Number: 10
+        Startx: 43
+        Starty: 127
+        Endx: 55
+        Endy: 114
+      - Map: izlude
+        Number: 10
+        Startx: 121
+        Starty: 115
+        Endx: 131
+        Endy: 88
+      - Map: morocc
+        Number: 10
+        Startx: 151
+        Starty: 104
+        Endx: 167
+        Endy: 88
+    Names: fake_player_name.txt
+    Behaviors:
+      - Behavior: grind
+        Number: 90
+  - Profiles: tambaytrans_world
+    LevelMin: 60
+    LevelMax: 70
+    Curve:
+      Enabled: false
+      SmoothingMinutes: 20
+      WeekendBoost: 1.25
+      PercLow: 20   #means 10% of Number
+      PercHigh: 150 #means 130% of Number
+      HourlyProfile: [  8,  6,  5,  5,  6,  8, 12, 18, 22, 28, 32, 35, 38, 40, 42, 46, 55, 65, 75, 85, 90, 80, 50, 25 ]
+      WeekendProfile: [  6,  5,  5,  5,  6, 10, 14, 22, 28, 36, 42, 48, 52, 55, 58, 62, 72, 85, 95, 100, 95, 85, 60, 35 ]
+    JobProfiles:
+      - JobProfile: sniper_starter
+        Number: 0
+      - JobProfile: whitesmith_starter
+        Number: 0
+      - JobProfile: stalker_starter
+        Number: 0
+      - JobProfile: sinx_starter
+        Number: 0
+      - JobProfile: lk_starter
+        Number: 0
+      - JobProfile: hp_starter
+        Number: 0
+      - JobProfile: hw_starter
+        Number: 0
+    Towns:
+      - Map: prontera
+        Number: 10
+        Startx: 149
+        Starty: 100
+        Endx: 162
+        Endy: 83
+      - Map: payon
+        Number: 25
+        Startx: 155
+        Starty: 121
+        Endx: 188
+        Endy: 93
+      - Map: geffen
+        Number: 10
+        Startx: 127
+        Starty: 64
+        Endx: 141
+        Endy: 46
+      - Map: geffen
+        Number: 10
+        Startx: 100
+        Starty: 52
+        Endx: 120
+        Endy: 35
+      - Map: geffen
+        Number: 10
+        Startx: 185
+        Starty: 127
+        Endx: 195
+        Endy: 115
+      - Map: geffen
+        Number: 10
+        Startx: 43
+        Starty: 127
+        Endx: 55
+        Endy: 114
+      - Map: izlude
+        Number: 10
+        Startx: 121
+        Starty: 115
+        Endx: 131
+        Endy: 88
+      - Map: morocc
+        Number: 10
+        Startx: 151
+        Starty: 104
+        Endx: 167
+        Endy: 88
+    Names: fake_player_name.txt
+    Behaviors:
+      - Behavior: afk_town
+        Number: 1000
+  - Profiles: trans_gh
+    LevelMin: 60
+    LevelMax: 70
+    Curve:
+      Enabled: false
+      SmoothingMinutes: 20
+      WeekendBoost: 1.25
+      PercLow: 20   #means 10% of Number
+      PercHigh: 150 #means 130% of Number
+      HourlyProfile: [  8,  6,  5,  5,  6,  8, 12, 18, 22, 28, 32, 35, 38, 40, 42, 46, 55, 65, 75, 85, 90, 80, 50, 25 ]
+      WeekendProfile: [  6,  5,  5,  5,  6, 10, 14, 22, 28, 36, 42, 48, 52, 55, 58, 62, 72, 85, 95, 100, 95, 85, 60, 35 ]
+    JobProfiles:
+      - JobProfile: sniper_starter
+        Number: 0
+      - JobProfile: hp_starter
+        Number: 0
+    Towns:
+      - Map: prontera
+        Number: 10
+        Startx: 139
+        Starty: 98
+        Endx: 162
+        Endy: 79
+    Names: fake_player_name.txt
+    Behaviors:
+      - Behavior: grind
+        Number: 1000
+  - Profiles: trans_mummy
+    LevelMin: 60
+    LevelMax: 70
+    Curve:
+      Enabled: false
+      SmoothingMinutes: 20
+      WeekendBoost: 1.25
+      PercLow: 20   #means 10% of Number
+      PercHigh: 150 #means 130% of Number
+      HourlyProfile: [  8,  6,  5,  5,  6,  8, 12, 18, 22, 28, 32, 35, 38, 40, 42, 46, 55, 65, 75, 85, 90, 80, 50, 25 ]
+      WeekendProfile: [  6,  5,  5,  5,  6, 10, 14, 22, 28, 36, 42, 48, 52, 55, 58, 62, 72, 85, 95, 100, 95, 85, 60, 35 ]
+    JobProfiles:
+      - JobProfile: sniper_mummy
+        Number: 0
+      - JobProfile: hp_mummy
+        Number: 0
+    Towns:
+      - Map: prontera
+        Number: 10
+        Startx: 139
+        Starty: 98
+        Endx: 162
+        Endy: 79
+    Names: fake_player_name.txt
+    Behaviors:
+      - Behavior: grind
+        Number: 1000
+  - Profiles: 2ndjob_gh
+    LevelMin: 60
+    LevelMax: 70
+    Curve:
+      Enabled: false
+      SmoothingMinutes: 20
+      WeekendBoost: 1.25
+      PercLow: 20   #means 10% of Number
+      PercHigh: 150 #means 130% of Number
+      HourlyProfile: [  8,  6,  5,  5,  6,  8, 12, 18, 22, 28, 32, 35, 38, 40, 42, 46, 55, 65, 75, 85, 90, 80, 50, 25 ]
+      WeekendProfile: [  6,  5,  5,  5,  6, 10, 14, 22, 28, 36, 42, 48, 52, 55, 58, 62, 72, 85, 95, 100, 95, 85, 60, 35 ]
+    JobProfiles:
+      - JobProfile: priest_starter
+        Number: 0
+      - JobProfile: hunter_starter
+        Number: 0
+    Towns:
+      - Map: prontera
+        Number: 10
+        Startx: 139
+        Starty: 98
+        Endx: 162
+        Endy: 79
+    Names: fake_player_name.txt
+    Behaviors:
+      - Behavior: grind
+        Number: 1000
+  - Profiles: 2ndjob_mummy
+    LevelMin: 60
+    LevelMax: 70
+    Curve:
+      Enabled: false
+      SmoothingMinutes: 20
+      WeekendBoost: 1.25
+      PercLow: 20   #means 10% of Number
+      PercHigh: 150 #means 130% of Number
+      HourlyProfile: [  8,  6,  5,  5,  6,  8, 12, 18, 22, 28, 32, 35, 38, 40, 42, 46, 55, 65, 75, 85, 90, 80, 50, 25 ]
+      WeekendProfile: [  6,  5,  5,  5,  6, 10, 14, 22, 28, 36, 42, 48, 52, 55, 58, 62, 72, 85, 95, 100, 95, 85, 60, 35 ]
+    JobProfiles:
+      - JobProfile: priest_mummy
+        Number: 0
+      - JobProfile: hunter_mummy
+        Number: 0
+    Towns:
+      - Map: prontera
+        Number: 10
+        Startx: 139
+        Starty: 98
+        Endx: 162
+        Endy: 79
+    Names: fake_player_name.txt
+    Behaviors:
+      - Behavior: grind
+        Number: 1000
+  - Profiles: supermelee_world
+    LevelMin: 80
+    LevelMax: 90
+    Curve:
+      Enabled: false
+      SmoothingMinutes: 20
+      WeekendBoost: 1.25
+      PercLow: 20   #means 10% of Number
+      PercHigh: 150 #means 130% of Number
+      HourlyProfile: [  8,  6,  5,  5,  6,  8, 12, 18, 22, 28, 32, 35, 38, 40, 42, 46, 55, 65, 75, 85, 90, 80, 50, 25 ]
+      WeekendProfile: [  6,  5,  5,  5,  6, 10, 14, 22, 28, 36, 42, 48, 52, 55, 58, 62, 72, 85, 95, 100, 95, 85, 60, 35 ]
+    JobProfiles:
+      - JobProfile: knight_starter
+        Number: 0
+      - JobProfile: assassin_starter
+        Number: 0
+      - JobProfile: blacksmith_starter
+        Number: 0
+      - JobProfile: rogue_starter
+        Number: 0
+    Towns:
+      - Map: prontera
+        Number: 10
+        Startx: 139
+        Starty: 98
+        Endx: 162
+        Endy: 79
+    Names: fake_player_name.txt
+    Behaviors:
+      - Behavior: grind
+        Number: 1000
+  - Profiles: supermeleetrans_world
+    LevelMin: 80
+    LevelMax: 90
+    Curve:
+      Enabled: false
+      SmoothingMinutes: 20
+      WeekendBoost: 1.25
+      PercLow: 20   #means 10% of Number
+      PercHigh: 150 #means 130% of Number
+      HourlyProfile: [  8,  6,  5,  5,  6,  8, 12, 18, 22, 28, 32, 35, 38, 40, 42, 46, 55, 65, 75, 85, 90, 80, 50, 25 ]
+      WeekendProfile: [  6,  5,  5,  5,  6, 10, 14, 22, 28, 36, 42, 48, 52, 55, 58, 62, 72, 85, 95, 100, 95, 85, 60, 35 ]
+    JobProfiles:
+      - JobProfile: whitesmith_starter
+        Number: 0
+      - JobProfile: stalker_starter
+        Number: 0
+      - JobProfile: sinx_starter
+        Number: 0
+      - JobProfile: lk_starter
+        Number: 0
+    Towns:
+      - Map: prontera
+        Number: 10
+        Startx: 139
+        Starty: 98
+        Endx: 162
+        Endy: 79
+    Names: fake_player_name.txt
+    Behaviors:
+      - Behavior: grind
+        Number: 1000
+  - Profiles: dupermelee_world
+    LevelMin: 98
+    LevelMax: 99
+    Curve:
+      Enabled: false
+      SmoothingMinutes: 20
+      WeekendBoost: 1.25
+      PercLow: 20   #means 10% of Number
+      PercHigh: 150 #means 130% of Number
+      HourlyProfile: [  8,  6,  5,  5,  6,  8, 12, 18, 22, 28, 32, 35, 38, 40, 42, 46, 55, 65, 75, 85, 90, 80, 50, 25 ]
+      WeekendProfile: [  6,  5,  5,  5,  6, 10, 14, 22, 28, 36, 42, 48, 52, 55, 58, 62, 72, 85, 95, 100, 95, 85, 60, 35 ]
+    JobProfiles:
+      - JobProfile: knight_starter
+        Number: 0
+      - JobProfile: assassin_starter
+        Number: 0
+      - JobProfile: blacksmith_starter
+        Number: 0
+      - JobProfile: rogue_starter
+        Number: 0
+    Towns:
+      - Map: prontera
+        Number: 10
+        Startx: 139
+        Starty: 98
+        Endx: 162
+        Endy: 79
+    Names: fake_player_name.txt
+    Behaviors:
+      - Behavior: grind
+        Number: 1000
+  - Profiles: dupermeleetrans_world
+    LevelMin: 98
+    LevelMax: 99
+    Curve:
+      Enabled: false
+      SmoothingMinutes: 20
+      WeekendBoost: 1.25
+      PercLow: 20   #means 10% of Number
+      PercHigh: 150 #means 130% of Number
+      HourlyProfile: [  8,  6,  5,  5,  6,  8, 12, 18, 22, 28, 32, 35, 38, 40, 42, 46, 55, 65, 75, 85, 90, 80, 50, 25 ]
+      WeekendProfile: [  6,  5,  5,  5,  6, 10, 14, 22, 28, 36, 42, 48, 52, 55, 58, 62, 72, 85, 95, 100, 95, 85, 60, 35 ]
+    JobProfiles:
+      - JobProfile: whitesmith_starter
+        Number: 0
+      - JobProfile: stalker_starter
+        Number: 0
+      - JobProfile: sinx_starter
+        Number: 0
+      - JobProfile: lk_starter
+        Number: 0
+    Towns:
+      - Map: prontera
+        Number: 10
+        Startx: 139
+        Starty: 98
+        Endx: 162
+        Endy: 79
+    Names: fake_player_name.txt
+    Behaviors:
+      - Behavior: grind
+        Number: 1000
+  - Profiles: 1stjobpalevel_world
+    LevelMin: 15
+    LevelMax: 20
+    Curve:
+      Enabled: false
+      SmoothingMinutes: 20
+      WeekendBoost: 1.25
+      PercLow: 20   #means 10% of Number
+      PercHigh: 150 #means 130% of Number
+      HourlyProfile: [  8,  6,  5,  5,  6,  8, 12, 18, 22, 28, 32, 35, 38, 40, 42, 46, 55, 65, 75, 85, 90, 80, 50, 25 ]
+      WeekendProfile: [  6,  5,  5,  5,  6, 10, 14, 22, 28, 36, 42, 48, 52, 55, 58, 62, 72, 85, 95, 100, 95, 85, 60, 35 ]
+    JobProfiles:
+      - JobProfile: swordman_starter
+        Number: 0
+      - JobProfile: mage_starter
+        Number: 0
+      - JobProfile: archer_starter
+        Number: 0
+      - JobProfile: acolyte_starter
+        Number: 0
+      - JobProfile: merchant_starter
+        Number: 0
+      - JobProfile: thief_starter
+        Number: 0
+    Towns:
+      - Map: prontera
+        Number: 10
+        Startx: 139
+        Starty: 98
+        Endx: 162
+        Endy: 79
+    Names: fake_player_name.txt
+    Behaviors:
+      - Behavior: grind
+        Number: 100
+  - Profiles: 1stjobnomerchant_world
+    LevelMin: 15
+    LevelMax: 20
+    Curve:
+      Enabled: false
+      SmoothingMinutes: 20
+      WeekendBoost: 1.25
+      PercLow: 20   #means 10% of Number
+      PercHigh: 150 #means 130% of Number
+      HourlyProfile: [  8,  6,  5,  5,  6,  8, 12, 18, 22, 28, 32, 35, 38, 40, 42, 46, 55, 65, 75, 85, 90, 80, 50, 25 ]
+      WeekendProfile: [  6,  5,  5,  5,  6, 10, 14, 22, 28, 36, 42, 48, 52, 55, 58, 62, 72, 85, 95, 100, 95, 85, 60, 35 ]
+    JobProfiles:
+      - JobProfile: swordman_starter
+        Number: 0
+      - JobProfile: mage_starter
+        Number: 0
+      - JobProfile: archer_starter
+        Number: 0
+      - JobProfile: acolyte_starter
+        Number: 0
+      - JobProfile: thief_starter
+        Number: 0
+    Towns:
+      - Map: prontera
+        Number: 10
+        Startx: 139
+        Starty: 98
+        Endx: 162
+        Endy: 79
+    Names: fake_player_name.txt
+    Behaviors:
+      - Behavior: grind
+        Number: 100
+  - Profiles: merchant_world
+    LevelMin: 15
+    LevelMax: 20
+    Curve:
+      Enabled: false
+      SmoothingMinutes: 20
+      WeekendBoost: 1.25
+      PercLow: 20   #means 10% of Number
+      PercHigh: 150 #means 130% of Number
+      HourlyProfile: [  8,  6,  5,  5,  6,  8, 12, 18, 22, 28, 32, 35, 38, 40, 42, 46, 55, 65, 75, 85, 90, 80, 50, 25 ]
+      WeekendProfile: [  6,  5,  5,  5,  6, 10, 14, 22, 28, 36, 42, 48, 52, 55, 58, 62, 72, 85, 95, 100, 95, 85, 60, 35 ]
+    JobProfiles:
+      - JobProfile: merchant_starter
+        Number: 0
+    Towns:
+      - Map: prontera
+        Number: 10
+        Startx: 139
+        Starty: 98
+        Endx: 162
+        Endy: 79
+    Names: fake_player_name.txt
+    Behaviors:
+      - Behavior: grind
+        Number: 100
+
+
+
+
+
+

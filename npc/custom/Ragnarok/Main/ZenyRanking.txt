@@ -1,0 +1,27 @@
+prontera,115,88,3	script	Zeny Manager	833,{
+mes " ";
+setdialogsize(300, 400); // Set the dialog size
+mes "<b>[ ^0000FF Zeny Ranking ^000000 ]</b>";
+
+if ( !( .@nb = query_sql( "SELECT `name`, `zeny` FROM `char` WHERE `zeny` > 0 AND `account_id` > 2000010 ORDER BY `zeny` DESC LIMIT 50;", .@c_name$, .@zeny ) ) ) {
+	mes "There is currently no player ranked.";
+	close;
+}
+
+for ( .@i = 0; .@i < .@nb; ++.@i )
+	mes "[ "+( .@i +1 )+" ] ^0000CC"+ .@c_name$[.@i] +"^000000 - ^C60306"+ callfunc("F_InsertComma",.@zeny[.@i]) +" z^000000";
+
+close;
+
+OnInit:
+    .Active = 1;
+    while( getvariableofnpc(.Active,"Zeny Manager") ) {
+    PUBTITLE:
+        freeloop(1);
+        showscript "Zeny Manager", getnpcid(0), AREA;			
+        sleep 1000; 
+        freeloop(0);
+        goto PUBTITLE;
+    }
+end;
+}

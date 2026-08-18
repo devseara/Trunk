@@ -1,0 +1,135 @@
+prontera,124,78,3	script	VIP Manager	660,{
+	mes "";
+    setdialogsize(400, 200);  
+    setdialogpospercent(50, 50);  
+
+	callfunc "F_NPC_NAME";
+	mes "Good day! My name is Bela, and I can enable your VIP access using Cash Points.";
+	mes " ";
+	mes "What do you want to do?";
+	switch(select(
+		"Apply for a Membership:"+
+		"Close"
+	)) {
+		
+	// --------------------------- Membership Info ---------------------------
+	case 1:
+		clear;
+		callfunc "F_NPC_NAME";
+		mes "Being a VIP user gives you access to various advantages:";
+		next;
+		callfunc "F_NPC_NAME";
+		mes "Lastly, all VIP users have access to NPC shops that non-VIP users do not.";
+		next;
+		callfunc "F_NPC_NAME";
+		mes "Do you want to be a premium user?";
+		if(getgroupid()==1 || getgroupid()==2 || getgroupid()==4 || getgroupid()==10) goto L_GMCKA;
+		next;
+			switch(select("Yes!:No, I'm just looking around.")) {
+				Case 1:
+					goto Ontalk;
+					close3;
+				Case 2:
+					callfunc "F_NPC_NAME";
+					mes "Okay, Have a nice day!";
+					close3;
+			}
+
+	Ontalk:
+		if ( vip_status(VIP_STATUS_ACTIVE) ) {
+			callfunc "F_NPC_NAME";
+			mes "You're already a Member of VIPs";
+			next;
+			callfunc "F_NPC_NAME";
+			mes "Come back when your VIP Membership expires.";
+			close3;
+		} else {
+			.@i = select(
+				.vip_day[0] + " Days",
+				.vip_day[1] + " Days",
+				.vip_day[2] + " Days",
+				.vip_day[3] + " Days"
+			)-1;
+			
+			callfunc "F_NPC_NAME";
+			mes "You will be a VIP Member for "+.vip_day[.@i]+" Day(s) in exchange of ^FF0000"+.vip_amt[.@i]+" Cash Points^000000.";
+			next;
+				switch(select("Yes, I want to become a VIP Member:No, I'm just looking around.")) {
+					case 1:
+						if (#CASHPOINTS >= .vip_amt[.@i]) {
+							set #CASHPOINTS, #CASHPOINTS - .vip_amt[.@i];
+							vip_time ( .vip_day[.@i] * 1440 );
+							callfunc "F_NPC_NAME";
+							mes "You are now a VIP Member for "+.vip_day[.@i]+" Day(s)!";
+							close3;
+						}
+						callfunc "F_NPC_NAME";
+						mes "You don't have enough Cash Points.";
+						close3;
+					case 2:
+						callfunc "F_NPC_NAME";
+						mes "Okay, Have a nice day!";
+						close3;
+				}
+		}
+		close3;
+	case 2:
+		end;
+	}
+	end;
+
+
+L_GMCKA:
+	next;
+	callfunc "F_NPC_NAME";
+	mes "Sorry but GMs cannot be VIP.";
+	close3;
+
+OnInit:
+	.Active = 1;
+	setarray .vip_day[0],1,3,7,15,30;
+	setarray .vip_cash$[1],"#CASHPOINTS", "Cash Point";
+	setarray .vip_amt[0],150,450,1050,2250,4500;
+
+    while( getvariableofnpc(.Active,"VIP Manager") ) {
+    PUBTITLE:
+        freeloop(1);
+        showscript "VIP Manager", getnpcid(0), AREA;			
+        sleep 1000; 
+        freeloop(0);
+        goto PUBTITLE;
+    }
+end;
+
+}
+
+
+-	script	VIP_STATUS	-1,{
+
+OnPCLoginEvent:
+	addtimer 0,strnpcinfo(0)+"::OnCheckVip";
+end;
+
+OnCheckVip:
+	if ( vip_status(1) ) {
+			set .@Timer, vip_status(2);
+			fakeIcon(getcharid(0),5203,.@timer,1); 
+			dispbottom "You're VIP.";
+			dispbottom "=============================================";
+			dispbottom "Account Status : VIP Account";
+			dispbottom "Time left : "+ callfunc("Time2Str",.@Timer);
+			dispbottom "Benefits:";      
+            dispbottom "Increase EXP by 50%";  
+            dispbottom "Increase Item Drop by 50%";   
+            dispbottom "Increase Storage Limit by 300";      
+			dispbottom "Drop Rate Penalty - 30%"; 
+			dispbottom "No EXP Penalty"; 
+			dispbottom "============================================";
+	}else{
+			dispbottom "You're not a VIP Member.";
+		    end;
+    }
+OnInit:
+	bindatcmd "vipstatus", strnpcinfo(0)+"::OnCheckVip", 0, 99; // @checkvip to list active vip accounts
+    end;
+}

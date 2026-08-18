@@ -1,0 +1,38 @@
+prontera,100,81,6	script	Hourly Shop	10173,{
+	callfunc "F_NPC_NAME";
+	mes "Yo, ^5200A3"+strcharinfo(0)+"^000000! I am the Hourly Coin Trader, Peruse my wares and let me know how I can aid you on your adventure.";
+	mes "^FF0000Requirement(s)^000000: " +#ComodoPlaytime+ " Comodo Playtime";
+	next;
+    switch(select(" ~ Usables: ~ Equipments: ~ ^777777Cancel^000000")) {
+        case 1:
+            callshop "Hourly Shop#1";
+            end;
+        case 2:
+            callfunc "F_NPC_NAME";
+            mes "No Available Items Yet.";
+            close;
+            //callshop "Hourly Shop#2";
+            end;
+        case 3:
+            end;
+    }
+
+OnInit:
+    .Active = 1;
+    while( getvariableofnpc(.Active,"Hourly Shop") ) {
+    PUBTITLE:
+        freeloop(1);
+        showscript "Hourly Shop", getnpcid(0), AREA;			
+        sleep 1000; 
+        freeloop(0);
+        goto PUBTITLE;
+    }
+}
+
+-	pointshop	Hourly Shop#1	873,#ComodoPlaytime,42000:1,42001:1,42002:1,42007:1,42003:1,42006:1,7621:3,12221:1,42004:3,42005:3,7776:50
+-	pointshop	Hourly Shop#2	873,#ComodoPlaytime,501:5
+
+
+
+// -------------------------- Duplicate Shops ---------------------------
+prontera	mapflag	loadevent

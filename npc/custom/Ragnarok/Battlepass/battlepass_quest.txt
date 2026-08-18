@@ -1,0 +1,678 @@
+//============================================================
+// Battle Pass Challenge (Random Target Version - Difficulty Based)
+//============================================================
+
+-	script	Battle Pass Challenge#1	4_M_MASKMAN,{
+
+OnBattlePassQuest:
+	mes "";
+	setdialogsize(400, 500);  
+	setdialogpospercent(50, 50);
+
+	callfunc "F_NPC_NAME";
+
+	// ======================
+	// Reward / Completion
+	// ======================
+	if((#CHC_Ttd >= #CHC_Qtd && #CHC_Qtd) || callsub(S_CHCTypeCheck))
+	{
+		if((#CHC_Tmp-gettimetick(2)) < 1 && atoi(.Hunt_Info$[(#CHC_idx+6)]))
+		{
+			mes "Your challenge has failed as time has expired.";
+			set #CHC_idx,0;
+			set #CHC_MOB,0;
+			set #CHC_Qtd,0;
+			set #CHC_Ttd,0;
+			set #CHC_Tmp,0;
+			set #CHC_Type,0;
+			set #CHC_Difficulty,0;
+			next;
+			callfunc "F_NPC_NAME";
+		}
+		else
+		{
+			mes "Well done, you completed your hunt very masterfully.";
+			mes "Here's your reward!";
+			query_sql "SELECT `id` FROM `chc_rank` WHERE `name`='"+strcharinfo(0)+"'",.@rst;
+			query_sql (.@rst?"UPDATE `chc_rank` SET `total`=`total`+1 WHERE `name`='"+strcharinfo(0)+"'":"INSERT INTO `chc_rank` VALUES (null,'"+strcharinfo(0)+"',1)");
+
+			if(.Hunt_Info$[(#CHC_idx+1)] != "")
+			{
+				explode(.@Reward_id$,""+.Hunt_Info$[(#CHC_idx+1)]+"",":");
+				explode(.@Reward_qtd$,""+.Hunt_Info$[(#CHC_idx+2)]+"",":");
+				set .@itens,getarraysize(.@Reward_id$);
+				
+				if(.@itens == 1)
+				{
+					if(!checkweight(atoi(.@Reward_id$[0]),atoi(.@Reward_qtd$[0])))
+					{ clear; mes "[Hunting Challenge]"; mes "You are carrying too many items!"; close; }
+					getitem atoi(.@Reward_id$[0]),atoi(.@Reward_qtd$[0]);
+				}
+				else if(.@itens)
+				{
+					for(set .@i,0; .@i<.@itens; set .@i,.@i+1)
+					{ setarray .@Reward_id[getarraysize(.@Reward_id)],atoi(.@Reward_id$[.@i]); setarray .@Reward_qtd[getarraysize(.@Reward_qtd)],atoi(.@Reward_qtd$[.@i]); }
+
+					if(!checkweight2(.@Reward_id,.@Reward_qtd)){ clear; mes "[Hunting Challenge]"; mes "You are carrying too many items!"; close; }
+					for(set .@i,0; .@i<getarraysize(.@Reward_id); set .@i,.@i+1)
+						getitem .@Reward_id[.@i],.@Reward_qtd[.@i];
+				}
+			}
+			
+			if(#CHC_Type)
+				delitem #CHC_MOB,#CHC_Qtd;
+
+			set #BPEXP,#BPEXP + #CHC_RewardPoints;
+			dispbottom "[Hunting Challenge]: You received "+#CHC_RewardPoints+" Battle Pass EXP, Total: "+#BPEXP+"",0xFFFF00;
+
+			set .@rst$,callsub(S_HCTimer,atoi(.Hunt_Info$[(#CHC_idx+7)]));
+			if(!atoi(.Hunt_Info$[(#CHC_idx+8)]) && @HCtimer >= 1) setd "#CHC_CDP_"+#CHC_idx+"_"+#CHC_Difficulty+"",(gettimetick(2)+@HCtimer);
+			if(atoi(.Hunt_Info$[(#CHC_idx+8)])) setd "#CHC_NRC_"+#CHC_idx+"_"+#CHC_Difficulty+"",1;
+
+			soundeffect "complete.wav",0;
+			specialeffect2 EF_ENTRY;
+			set #CHC_idx,0;
+			set #CHC_MOB,0;
+			set #CHC_Qtd,0;
+			set #CHC_Ttd,0;
+			set #CHC_Tmp,0;
+			set #CHC_Type,0;
+			set #CHC_Difficulty,0;
+			set #CHC_RewardPoints,0;
+			next;
+			callfunc "F_NPC_NAME";
+		}
+	}
+	// ======================
+	// Ongoing challenge
+	// ======================
+	else if((#CHC_Ttd < #CHC_Qtd && #CHC_Qtd) || callsub(S_CHCTypeCheck,1))
+	{
+		if((#CHC_Tmp-gettimetick(2)) < 1 && atoi(.Hunt_Info$[(#CHC_idx+6)]))
+		{
+			mes "Your challenge has failed as time has expired.";
+			set #CHC_idx,0;
+			set #CHC_MOB,0;
+			set #CHC_Qtd,0;
+			set #CHC_Ttd,0;
+			set #CHC_Tmp,0;
+			set #CHC_Type,0;
+			set #CHC_Difficulty,0;
+			set #CHC_RewardPoints,0;
+			next;
+			callfunc "F_NPC_NAME";
+		}
+		else
+		{
+			if(!#CHC_Type)
+			{
+				mes "Challenge is:";
+				mes "^ff8000[Kill "+#CHC_Qtd+"x "+strmobinfo(1,#CHC_MOB)+"]^000000";
+			}
+			else
+			{
+				mes "Challenge is";
+				mes "^ff8000[Collect "+#CHC_Qtd+"x "+getitemname(#CHC_MOB)+"]^000000";
+			}
+
+			mes "^00a3d9Reward:^000000";
+			mes "^f2f2f2.^000000^f55fc6 "+#CHC_RewardPoints+"x Battle Pass EXP^000000";
+
+			mes "Difficulty: ^ff8000"+(#CHC_Difficulty==1?"Easy":(#CHC_Difficulty==2?"Normal":(#CHC_Difficulty==3?"Hard":"Hardcore")))+"^000000";
+			mes "Time Limit: "+callsub(S_HCTimer,atoi(.Hunt_Info$[(#CHC_idx+6)]))+"^000000";
+			mes "Repeatable: "+(atoi(.Hunt_Info$[(#CHC_idx+8)])?"^FF0000No":"^36d900Yes")+"^000000";
+
+			if(!#CHC_Type)
+				mes "You killed ^ff8000"+#CHC_Ttd+"/"+#CHC_Qtd+" "+strmobinfo(1,#CHC_MOB)+"^000000";
+			else
+				mes "You collected ^ff8000"+countitem(#CHC_MOB)+"/"+#CHC_Qtd+" "+getitemname(#CHC_MOB)+"^000000";
+	
+			if(#CHC_Tmp)
+			{
+				set .@rst$,callsub(S_HCTimer,(#CHC_Tmp-gettimetick(2)),1);
+				set .@ltime,countstr(.@rst$,"No Limit");
+				if(.@ltime)
+					mes "^FF0000[ Failed ]^000000";
+				else
+				{
+					mes "Time Left:";
+					mes "^d900a3"+.@rst$+"^000000";
+				}
+			}
+
+			if(select("Challenge Accepted!:Give up challenge, Pay "+callfunc("F_InsertComma",.HuntFeeRST)+"z")==1) close;
+			clear();
+			if(Zeny < .HuntFeeRST){ callfunc "F_NPC_NAME"; mes "You don't have enough zeny."; close; }
+			set Zeny,Zeny-.HuntFeeRST;
+
+			callfunc "F_NPC_NAME";
+			mes "Alright, you can choose another challenge now.";
+			set #CHC_idx,0;
+			set #CHC_MOB,0;
+			set #CHC_Qtd,0;
+			set #CHC_Ttd,0;
+			set #CHC_Tmp,0;
+			set #CHC_Type,0;
+			set #CHC_Difficulty,0;
+			set #CHC_RewardPoints,0;
+			next;
+			callfunc "F_NPC_NAME";
+		}
+	}
+	
+	// ======================
+	// Main menu
+	// ======================
+	mes "You seem like a person who is always looking for a good adventure...!?";
+	mes "I can reward you if you manage to complete my challenges!";
+	next;
+	switch(select("- Choose a Challenge!:- I don't like adventures..."))
+	{
+		case 1:
+			clear();
+			callfunc "F_NPC_NAME";
+			mes "All right! You will be rewarded.";
+			mes "as soon as you finish the challenge!";
+			mes "...";
+			mes "....";
+			mes "Choose a CHALLENGE!";
+			next;
+
+			for(set .@i,0; .@i<getarraysize(.mn_idx$); set .@i,.@i+1)
+			{
+				set .@mn$,.@mn$+""+(.@i+1)+") "+.Hunt_Info$[atoi(.mn_idx$[.@i])]+"^000000:";
+			}
+
+			set .@slt,atoi(.mn_idx$[(select(implode(.@mn$))-1)]);
+			
+			set @HCtimer,0;
+			clear();
+			callfunc "F_NPC_NAME";
+
+			if(.Hunt_Info$[(.@slt+1)] == "" && .Hunt_Info$[(.@slt+3)] == "")
+			{
+				mes "^FF0000Challenge without prizes cannot be selected!^000000";
+				close;
+			}
+			set .@CHType,atoi(.Hunt_Info$[(.@slt+9)]);
+
+			mes .Hunt_Info$[.@slt];
+			mes "";
+			mes "^00a3d9Difficulty Status:^000000";
+			
+			// Show all 4 difficulties with their status
+			for(set .@d,1; .@d<=4; set .@d,.@d+1)
+			{
+				set .@difficulty_name$,(.@d==1?"Easy":(.@d==2?"Normal":(.@d==3?"Hard":"Hardcore")));
+				set .@status$,"^36d900Available^000000";
+				
+				if(getd("#CHC_NRC_"+.@slt+"_"+.@d+""))
+					set .@status$,"^8000ff[Completed]^000000";
+				else if(getd("#CHC_CDP_"+.@slt+"_"+.@d+"") > gettimetick(2))
+					set .@status$,"^FF0000[Cooldown: "+callsub(S_HCTimer,(getd("#CHC_CDP_"+.@slt+"_"+.@d+"")-gettimetick(2)),1)+"]^000000";
+				
+				mes "  "+.@difficulty_name$+": "+.@status$+"";
+			}
+			
+			mes " ";
+			mes "Select your difficulty level:";
+			set .@difficulty,select("Easy:Normal:Hard:Hardcore");
+			
+			clear();
+			callfunc "F_NPC_NAME";
+
+			// Check cooldown and completion per difficulty
+			if(getd("#CHC_CDP_"+.@slt+"_"+.@difficulty+"") > gettimetick(2))
+			{
+				mes "You can repeat this challenge in:";
+				mes "^f2f2f2.^000000 ^FF0000"+callsub(S_HCTimer,(getd("#CHC_CDP_"+.@slt+"_"+.@difficulty+"")-gettimetick(2)),1)+"^000000";
+				close;
+			}
+			else if(getd("#CHC_CDP_"+.@slt+"_"+.@difficulty+"")) setd "#CHC_CDP_"+.@slt+"_"+.@difficulty+"",0;
+
+			if(getd("#CHC_NRC_"+.@slt+"_"+.@difficulty+""))
+			{
+				mes "^FF0000You have already completed this difficulty and will not be able to do it again.^000000";
+				close;				
+			}
+
+            set .@qty,0;
+			set .@reward_points,0;
+			if(.@difficulty == 1) {
+				set .@qty,100;
+				set .@reward_points,50;
+			} else if(.@difficulty == 2) {
+				set .@qty,150;
+				set .@reward_points,100;
+			} else if(.@difficulty == 3) {
+				set .@qty,200;
+				set .@reward_points,200;
+			} else {
+				set .@qty,300;
+				set .@reward_points,300;
+			}
+
+			mes "^00a3d9Reward:^000000";
+			mes "^f2f2f2.^000000^f55fc6 "+.@reward_points+"x Battle Pass EXP^000000";
+
+			if(!.@CHType)
+			{
+				if(.@slt == 0)
+				{
+					if(.@difficulty == 1) {
+						set .@sz,getarraysize(.RandomMob_Easy_0);
+						set .@preview_mob,.RandomMob_Easy_0[rand(.@sz)];
+					} else if(.@difficulty == 2) {
+						set .@sz,getarraysize(.RandomMob_Normal_0);
+						set .@preview_mob,.RandomMob_Normal_0[rand(.@sz)];
+					} else if(.@difficulty == 3) {
+						set .@sz,getarraysize(.RandomMob_Hard_0);
+						set .@preview_mob,.RandomMob_Hard_0[rand(.@sz)];
+					} else {
+						set .@sz,getarraysize(.RandomMob_Hardcore_0);
+						set .@preview_mob,.RandomMob_Hardcore_0[rand(.@sz)];
+					}
+				}
+				mes "^ff8000Hunt:";
+				mes "    "+.@qty+"x "+strmobinfo(1,.@preview_mob)+"^000000";
+			}
+			else
+			{
+				if(.@slt == 10)
+				{
+					if(.@difficulty == 1) {
+						set .@sz,getarraysize(.RandomItem_Easy_1);
+						set .@preview_item,.RandomItem_Easy_1[rand(.@sz)];
+					} else if(.@difficulty == 2) {
+						set .@sz,getarraysize(.RandomItem_Normal_1);
+						set .@preview_item,.RandomItem_Normal_1[rand(.@sz)];
+					} else if(.@difficulty == 3) {
+						set .@sz,getarraysize(.RandomItem_Hard_1);
+						set .@preview_item,.RandomItem_Hard_1[rand(.@sz)];
+					} else {
+						set .@sz,getarraysize(.RandomItem_Hardcore_1);
+						set .@preview_item,.RandomItem_Hardcore_1[rand(.@sz)];
+					}
+				}
+				mes "^ff8000Collect:";
+				mes "    "+.@qty+"x "+getitemname(.@preview_item)+"^000000";
+			}
+
+			mes "Difficulty: ^ff8000"+(.@difficulty==1?"Easy":(.@difficulty==2?"Normal":(.@difficulty==3?"Hard":"Hardcore")))+"^000000";
+			mes "Time Limit: "+callsub(S_HCTimer,atoi(.Hunt_Info$[(.@slt+6)]))+"^000000";
+			set .@timer,@HCtimer;
+			mes "Repeatable: "+(atoi(.Hunt_Info$[(.@slt+8)])?"^FF0000No":"^36d900Yes")+"^000000";
+
+			set #CHC_idx,.@slt;
+			set #CHC_Qtd,.@qty;
+			set #CHC_Ttd,0;
+			set #CHC_Type,.@CHType;
+			set #CHC_Difficulty,.@difficulty;
+			set #CHC_RewardPoints,.@reward_points;
+
+			if(!.@CHType)
+			{
+				set #CHC_MOB,.@preview_mob;
+			}
+			else
+			{
+				set #CHC_MOB,.@preview_item;
+			}
+
+			if(.@timer) set #CHC_Tmp,(gettimetick(2)+.@timer);
+
+			next;
+			clear();
+			callfunc "F_NPC_NAME";
+			mes "Wonderful, I believe in you and that you will pass this challenge! Good luck!";
+			if(#CHC_Tmp) mes "^ff8000You better go soon, time is ticking!^000000";
+			if(!#CHC_Type)
+				mes "Target: ^ff8000"+#CHC_Qtd+"x "+strmobinfo(1,#CHC_MOB)+"^000000";
+			else
+				mes "Target: ^ff8000"+#CHC_Qtd+"x "+getitemname(#CHC_MOB)+"^000000";
+			close;
+
+		case 2:
+			callfunc "F_NPC_NAME";
+			mes "Too bad, you're missing out on the best of everything.";
+			break;
+	}
+close;
+
+S_CHCTypeCheck:
+
+	if(!#CHC_Type) return 0;
+	set .@opt,getarg(0,0);
+
+	if(!.@opt)
+		return (countitem(#CHC_MOB) >= #CHC_Qtd ? 1 : 0);
+	else
+		return (countitem(#CHC_MOB) < #CHC_Qtd ? 1 : 0);
+
+OnCHC_CMD:
+
+	if(!#CHC_MOB){ dispbottom "[Hunting Challenge]: You haven't started any challenge yet!",0xFFFF00; end; }
+	if(#CHC_Tmp)
+		if(gettimetick(2) > #CHC_Tmp && #CHC_Ttd < #CHC_Qtd)
+		{
+			dispbottom "[Hunting Challenge]: The time limit to do the challenge has expired!",0xFFFF00;
+			dispbottom "[Hunting Challenge]: Challenge removed!",0xFFFF00;
+			set #CHC_idx,0;
+			set #CHC_MOB,0;
+			set #CHC_Qtd,0;
+			set #CHC_Ttd,0;
+			set #CHC_Tmp,0;
+			end;
+		}
+		else
+		{
+			set .@rst$,callsub(S_HCTimer,(#CHC_Tmp-gettimetick(2)),1);
+			dispbottom "[Hunting Challenge]: "+(countstr(.@rst$,"No Limit")?"Challenge Failed~":"You still have "+.@rst$+" left to finish the challenge.")+"",0xFFFF00;
+		}
+		
+		if(!#CHC_Type)
+			dispbottom "[Hunting Challenge]: You already killed [ "+#CHC_Ttd+"/"+#CHC_Qtd+" "+strmobinfo(1,#CHC_MOB)+" ] "+(#CHC_Ttd>=#CHC_Qtd?"(Completed)":"")+"",0xFFFF00;
+		else
+			dispbottom "[Hunting Challenge]: You collected [ "+countitem(#CHC_MOB)+"/"+#CHC_Qtd+" "+getitemname(#CHC_MOB)+" ] "+(countitem(#CHC_MOB)>=#CHC_Qtd?"(Completed)":"")+"",0xFFFF00;
+end;
+
+
+S_HCTimer:
+
+	if(getarg(0) < 1) return "^36d900No Limit";
+	set .@calc,getarg(0);
+	set .@d,(.@calc/86400);
+	set .@h,(.@calc%86400)/3600;
+	set .@m,(.@calc%3600)/60;
+	set .@s,(.@calc%60); 
+	set @HCtimer,0;
+	
+	if(!.@d && !.@h && !.@m && !.@s)
+		set .@str$,"^36d900No Limit";
+	else
+	{
+		set .@str$,"^d900a3";
+		if(.@d) set .@str$,(.@d?.@d+" day"+(.@d>1?"s":"")+""+(.@h||.@m||.@s?", ":"")+"":"");
+		if(.@h) set .@str$,.@str$+""+.@h+"h";
+		if(.@m) set .@str$,.@str$+""+(.@h?":":"")+""+(.@m<10&&.@h?"0"+.@m:.@m)+"m";
+		if(.@s) set .@str$,.@str$+""+(.@m?":":"")+""+(.@s<10?"0"+.@s:.@s)+"s";
+		set @HCtimer,.@calc;
+	}
+	
+	return (!@HCtimer?"^36d900No Limit":.@str$);
+
+
+OnNPCKillEvent:
+
+	if(#CHC_Type || #CHC_MOB != killedrid) end;
+	if(#CHC_Tmp)
+		if(gettimetick(2) > #CHC_Tmp && #CHC_Ttd < #CHC_Qtd)
+		{
+			dispbottom "[Hunting Challenge]: The time limit to do the challenge has expired!",0xFFFF00;
+			end;
+		}
+	if(#CHC_Ttd >= #CHC_Qtd){ dispbottom "[Hunting Challenge]: You completed the challenge, come back to claim your reward.",0xFFFF00; end; }
+	set #CHC_Ttd,#CHC_Ttd+1;	
+	showscript("[Hunting Challenge]: You killed ["+#CHC_Ttd+"/"+#CHC_Qtd+" "+strmobinfo(1,killedrid)+"]");
+	dispbottom("[Hunting Challenge]: You killed ["+#CHC_Ttd+"/"+#CHC_Qtd+" "+strmobinfo(1,killedrid)+"]"),0xFFFFFF;	
+	if(#CHC_Ttd >= #CHC_Qtd)
+	{
+		dispbottom "[Hunting Challenge]: You completed the challenge, come back to claim your reward!",0xFFFF00;
+		showscript("[Hunting Challenge]: Completed!");
+	}
+end;
+
+OnBuyItem:
+
+	set .@idx,inarray(.Hunt_Shop[0],@bought_nameid);
+	if(.@idx == -1){ mes "[Hunting Challenge]"; mes "^FF0000Unable to find item!^000000"; close; }
+
+	mes "[Hunting Challenge]";
+	mes "Item: "+@bought_quantity+"x <ITEM>"+getitemname(@bought_nameid)+"<INFO>"+@bought_nameid+"</INFO></ITEM>";
+	mes "Point Price: "+(.Hunt_Shop[(.@idx+1)]*@bought_quantity)+"";
+	mes "Current Points: "+#CHALLENGEPOINTS+"";
+	if(select("- Purchase:- Cancel")==2) close;
+	if(#CHALLENGEPOINTS < (.Hunt_Shop[(.@idx+1)]*@bought_quantity)){ clear; mes "[Hunting Challenge]"; mes "You don't have enough challenge points!"; close; }
+	if(!checkweight(@bought_nameid,@bought_quantity)){ clear; mes "[Hunting Challenge]"; mes "You are carrying too many items!"; close; }
+	set #CHALLENGEPOINTS,#CHALLENGEPOINTS-(.Hunt_Shop[(.@idx+1)]*@bought_quantity);	
+	dispbottom "[Hunting Challenge]: You used "+(.Hunt_Shop[(.@idx+1)]*@bought_quantity)+" challenge points and stayed with "+#CHALLENGEPOINTS+".",0xFFFF00;
+	getitem @bought_nameid,@bought_quantity;
+	close;
+
+
+OnInit:
+
+	//1 <"Menu Title">,
+	//2 <"Reward:item_id:item_id...">,
+	//3 <"RewardAmount:amount:amount...">,
+	//4 <"Reward Point Description:#VARPOINT:AMOUNT">,
+	//5 <mob_id or item_id>,
+	//6 <amount>,
+	//7 <time limit in sec>,
+	//8 <cooldown in sec>,
+	//9 <0= repeat, 1= no-repeat>
+	//10 <0= Kill Mob, 1= Collect item>
+    
+	setarray .Hunt_Info$[0],
+
+		"Hunt Random Monsters","","","Battle Pass EXP:#BPEXP:1",0,100,14400,86400,1,0,
+		"Collect Random Item" ,"","","Battle Pass EXP:#BPEXP:1",0,150,14400,86400,1,1;
+
+	setarray .RandomMob_Easy_0[0],1713,1716,1769,1193,1275,1735,1736,1737,1271,1094,1030,1699,1297,
+                                  1095,1206,1627,1097,1403,1098,1668,1285,1016,1194,1099,1100,1315,
+                                  1266,1415,1867,1101,1102,1633,1060,1367,1408,1507,1520,1188,1692,
+                                  1211,1103,1267,1214,1011,1519,1513,1269,1104,1009,1738,1265,1246,
+                                  1067,1073,1209,1018,1248,1514,1260,1698,1384,1385,1378,1105,1106,
+                                  1107,1109,1382,1669,1670,1671,1672,1673,1506,1110,1721,1321,1111,
+                                  1380,1113,1781,1493,1504,1114,1770,1116,1377,1033,1412,1117,1383,
+                                  1007,1005,1714,1717,1869,1118,1319,1119,1753,1317,1391,1783,1253,
+                                  1778,1368,1036,1503,1121,1387,1372,1122,1123,1124,1125,1126,1258,
+                                  1040,1369,1277,1632,1381,1376,1318,1866,1213,1680,1127,1773,1128,
+                                  1004,1129,1035,1068,1510,1777,1837,1516,1257,1212,1772,1029,1130,
+                                  1131,1406,1400,1133,1134,1135,1282,1296,1587,1070,1366,1586,1881,
+                                  1517,1410,1505,1509,1063,1138,1020,1139,1045,1140,1242,1141,1142,
+                                  1143,1144,1145,1146,1884,1148,1274,1064,1264,1613,1058,1191,1614,
+                                  1149,1404,1628,1055,1041,1026,1780,1151,1249,1870,1255,1061,1379,
+                                  1180,1715,1718,1620,1044,1615,1189,1686,1273,1152,1153,1023,1154,
+                                  1019,1047,1216,1314,1256,1155,1156,1158,1202,1049,1050,1160,1071,
+                                  1616,1161,1077,1402,1031,1619,1199,1008,1508,1865,1254,1163,1276,
+                                  1682,1164,1409,1195,1052,1012,1782,1201,1281,1165,1243,1166,1167,
+                                  1001,1323,1774,1074,1701,1401,1037,1196,1169,1076,1386,1056,1025,
+                                  1775,1170,1028,1316,1014,1322,1174,1278,1280,1042,1215,1207,1495,
+                                  1065,1069,1584,1175,1622,1405,1034,1375,1051,1053,1054,1048,1279,
+                                  1066,1771,1882,1621,1032,1390,1176,1088,1208,1617,1653,1179,1082,
+                                  1416,1413,1261,1010,1263,1013,1880,1497,1499,1498,1024,1192,1291,
+                                  1081,1057,1177,1178,1417,1015,1197,1864;
+
+	setarray .RandomMob_Normal_0[0],1713,1716,1769,1193,1275,1735,1736,1737,1271,1094,1030,1699,1297,
+                                  1095,1206,1627,1097,1403,1098,1668,1285,1016,1194,1099,1100,1315,
+                                  1266,1415,1867,1101,1102,1633,1060,1367,1408,1507,1520,1188,1692,
+                                  1211,1103,1267,1214,1011,1519,1513,1269,1104,1009,1738,1265,1246,
+                                  1067,1073,1209,1018,1248,1514,1260,1698,1384,1385,1378,1105,1106,
+                                  1107,1109,1382,1669,1670,1671,1672,1673,1506,1110,1721,1321,1111,
+                                  1380,1113,1781,1493,1504,1114,1770,1116,1377,1033,1412,1117,1383,
+                                  1007,1005,1714,1717,1869,1118,1319,1119,1753,1317,1391,1783,1253,
+                                  1778,1368,1036,1503,1121,1387,1372,1122,1123,1124,1125,1126,1258,
+                                  1040,1369,1277,1632,1381,1376,1318,1866,1213,1680,1127,1773,1128,
+                                  1004,1129,1035,1068,1510,1777,1837,1516,1257,1212,1772,1029,1130,
+                                  1131,1406,1400,1133,1134,1135,1282,1296,1587,1070,1366,1586,1881,
+                                  1517,1410,1505,1509,1063,1138,1020,1139,1045,1140,1242,1141,1142,
+                                  1143,1144,1145,1146,1884,1148,1274,1064,1264,1613,1058,1191,1614,
+                                  1149,1404,1628,1055,1041,1026,1780,1151,1249,1870,1255,1061,1379,
+                                  1180,1715,1718,1620,1044,1615,1189,1686,1273,1152,1153,1023,1154,
+                                  1019,1047,1216,1314,1256,1155,1156,1158,1202,1049,1050,1160,1071,
+                                  1616,1161,1077,1402,1031,1619,1199,1008,1508,1865,1254,1163,1276,
+                                  1682,1164,1409,1195,1052,1012,1782,1201,1281,1165,1243,1166,1167,
+                                  1001,1323,1774,1074,1701,1401,1037,1196,1169,1076,1386,1056,1025,
+                                  1775,1170,1028,1316,1014,1322,1174,1278,1280,1042,1215,1207,1495,
+                                  1065,1069,1584,1175,1622,1405,1034,1375,1051,1053,1054,1048,1279,
+                                  1066,1771,1882,1621,1032,1390,1176,1088,1208,1617,1653,1179,1082,
+                                  1416,1413,1261,1010,1263,1013,1880,1497,1499,1498,1024,1192,1291,
+                                  1081,1057,1177,1178,1417,1015,1197,1864;
+
+	setarray .RandomMob_Hard_0[0],1713,1716,1769,1193,1275,1735,1736,1737,1271,1094,1030,1699,1297,
+                                  1095,1206,1627,1097,1403,1098,1668,1285,1016,1194,1099,1100,1315,
+                                  1266,1415,1867,1101,1102,1633,1060,1367,1408,1507,1520,1188,1692,
+                                  1211,1103,1267,1214,1011,1519,1513,1269,1104,1009,1738,1265,1246,
+                                  1067,1073,1209,1018,1248,1514,1260,1698,1384,1385,1378,1105,1106,
+                                  1107,1109,1382,1669,1670,1671,1672,1673,1506,1110,1721,1321,1111,
+                                  1380,1113,1781,1493,1504,1114,1770,1116,1377,1033,1412,1117,1383,
+                                  1007,1005,1714,1717,1869,1118,1319,1119,1753,1317,1391,1783,1253,
+                                  1778,1368,1036,1503,1121,1387,1372,1122,1123,1124,1125,1126,1258,
+                                  1040,1369,1277,1632,1381,1376,1318,1866,1213,1680,1127,1773,1128,
+                                  1004,1129,1035,1068,1510,1777,1837,1516,1257,1212,1772,1029,1130,
+                                  1131,1406,1400,1133,1134,1135,1282,1296,1587,1070,1366,1586,1881,
+                                  1517,1410,1505,1509,1063,1138,1020,1139,1045,1140,1242,1141,1142,
+                                  1143,1144,1145,1146,1884,1148,1274,1064,1264,1613,1058,1191,1614,
+                                  1149,1404,1628,1055,1041,1026,1780,1151,1249,1870,1255,1061,1379,
+                                  1180,1715,1718,1620,1044,1615,1189,1686,1273,1152,1153,1023,1154,
+                                  1019,1047,1216,1314,1256,1155,1156,1158,1202,1049,1050,1160,1071,
+                                  1616,1161,1077,1402,1031,1619,1199,1008,1508,1865,1254,1163,1276,
+                                  1682,1164,1409,1195,1052,1012,1782,1201,1281,1165,1243,1166,1167,
+                                  1001,1323,1774,1074,1701,1401,1037,1196,1169,1076,1386,1056,1025,
+                                  1775,1170,1028,1316,1014,1322,1174,1278,1280,1042,1215,1207,1495,
+                                  1065,1069,1584,1175,1622,1405,1034,1375,1051,1053,1054,1048,1279,
+                                  1066,1771,1882,1621,1032,1390,1176,1088,1208,1617,1653,1179,1082,
+                                  1416,1413,1261,1010,1263,1013,1880,1497,1499,1498,1024,1192,1291,
+                                  1081,1057,1177,1178,1417,1015,1197,1864;
+
+	setarray .RandomMob_Hardcore_0[0],1713,1716,1769,1193,1275,1735,1736,1737,1271,1094,1030,1699,1297,
+                                  1095,1206,1627,1097,1403,1098,1668,1285,1016,1194,1099,1100,1315,
+                                  1266,1415,1867,1101,1102,1633,1060,1367,1408,1507,1520,1188,1692,
+                                  1211,1103,1267,1214,1011,1519,1513,1269,1104,1009,1738,1265,1246,
+                                  1067,1073,1209,1018,1248,1514,1260,1698,1384,1385,1378,1105,1106,
+                                  1107,1109,1382,1669,1670,1671,1672,1673,1506,1110,1721,1321,1111,
+                                  1380,1113,1781,1493,1504,1114,1770,1116,1377,1033,1412,1117,1383,
+                                  1007,1005,1714,1717,1869,1118,1319,1119,1753,1317,1391,1783,1253,
+                                  1778,1368,1036,1503,1121,1387,1372,1122,1123,1124,1125,1126,1258,
+                                  1040,1369,1277,1632,1381,1376,1318,1866,1213,1680,1127,1773,1128,
+                                  1004,1129,1035,1068,1510,1777,1837,1516,1257,1212,1772,1029,1130,
+                                  1131,1406,1400,1133,1134,1135,1282,1296,1587,1070,1366,1586,1881,
+                                  1517,1410,1505,1509,1063,1138,1020,1139,1045,1140,1242,1141,1142,
+                                  1143,1144,1145,1146,1884,1148,1274,1064,1264,1613,1058,1191,1614,
+                                  1149,1404,1628,1055,1041,1026,1780,1151,1249,1870,1255,1061,1379,
+                                  1180,1715,1718,1620,1044,1615,1189,1686,1273,1152,1153,1023,1154,
+                                  1019,1047,1216,1314,1256,1155,1156,1158,1202,1049,1050,1160,1071,
+                                  1616,1161,1077,1402,1031,1619,1199,1008,1508,1865,1254,1163,1276,
+                                  1682,1164,1409,1195,1052,1012,1782,1201,1281,1165,1243,1166,1167,
+                                  1001,1323,1774,1074,1701,1401,1037,1196,1169,1076,1386,1056,1025,
+                                  1775,1170,1028,1316,1014,1322,1174,1278,1280,1042,1215,1207,1495,
+                                  1065,1069,1584,1175,1622,1405,1034,1375,1051,1053,1054,1048,1279,
+                                  1066,1771,1882,1621,1032,1390,1176,1088,1208,1617,1653,1179,1082,
+                                  1416,1413,1261,1010,1263,1013,1880,1497,1499,1498,1024,1192,1291,
+                                  1081,1057,1177,1178,1417,1015,1197,1864;
+
+	setarray .RandomItem_Easy_1[0],		
+	                              702,703,704,705,711,712,713,715,716,901,902,903,904,905,906,907,908,
+                                  909,910,911,912,913,914,915,916,917,918,919,920,921,922,923,924,925,
+                                  926,928,929,930,931,932,934,935,936,937,938,939,940,941,942,943,944,
+                                  945,946,947,948,949,950,951,952,953,954,955,956,957,958,959,960,961,
+                                  962,963,964,965,966,967,998,999,1001,1002,1003,1012,1013,1014,1015,
+                                  1016,1017,1018,1019,1020,1021,1022,1023,1024,1025,1026,1027,1028,
+                                  1031,1032,1033,1034,1035,1036,1037,1038,1039,1040,1041,1042,1043,
+                                  1044,1045,1046,1048,1050,1051,1052,1053,1054,1055,1056,1057,1058,
+                                  1059,1060,1061,1062,1063,1064,7001,7002,7003,7004,7005,7006,7007,
+                                  7008,7009,7010,7011,7012,7013,7014,7015,7016,7017,7030,7031,7032,
+                                  7033,7038,7041,7043,7047,7053,7054,7062,7063,7064,7065,7066,7067,
+                                  7068,7069,7070,7071,7072,7095,7097,7098,7100,7101,7106,7107,7110,
+                                  7111,7112,7115,7116,7117,7120,7121,7122,7123,7124,7125,7126,7150,
+                                  7151,7152,7153,7154,7155,7156,7157,7158,7159,7161,7162,7163,7164,
+                                  7165,7166,7167,7168,7169,7171,7172,7174,7175,7182,7186,7187,7188,
+                                  7189,7190,7192,7193,7194,7195,7196,7197,7198,7200,7201,7202,7203,
+                                  7205,7206,7207,7208,7209,7210,7211,7212,7213,7214,7215,7216,7217,
+                                  7218,7219,7220,7221,7222,7223,7224,7225,7262,7263,7264,7265,7266,
+                                  7267,7268,7269,7270,7272,7298,7299,7300,7301,7312,7315,7316,7317,
+                                  7318,7319,7320,7321,7322,7323,7325,7326,7327,7440,7441,7442,7443,
+                                  7444,7445,7446,7447,7448,7449,7561,7563,7564,7565,7567,7568,740,
+                                  746,1004,1006,1009;
+
+	setarray .RandomItem_Normal_1[0],702,703,704,705,711,712,713,715,716,901,902,903,904,905,906,907,908,
+                                  909,910,911,912,913,914,915,916,917,918,919,920,921,922,923,924,925,
+                                  926,928,929,930,931,932,934,935,936,937,938,939,940,941,942,943,944,
+                                  945,946,947,948,949,950,951,952,953,954,955,956,957,958,959,960,961,
+                                  962,963,964,965,966,967,998,999,1001,1002,1003,1012,1013,1014,1015,
+                                  1016,1017,1018,1019,1020,1021,1022,1023,1024,1025,1026,1027,1028,
+                                  1031,1032,1033,1034,1035,1036,1037,1038,1039,1040,1041,1042,1043,
+                                  1044,1045,1046,1048,1050,1051,1052,1053,1054,1055,1056,1057,1058,
+                                  1059,1060,1061,1062,1063,1064,7001,7002,7003,7004,7005,7006,7007,
+                                  7008,7009,7010,7011,7012,7013,7014,7015,7016,7017,7030,7031,7032,
+                                  7033,7038,7041,7043,7047,7053,7054,7062,7063,7064,7065,7066,7067,
+                                  7068,7069,7070,7071,7072,7095,7097,7098,7100,7101,7106,7107,7110,
+                                  7111,7112,7115,7116,7117,7120,7121,7122,7123,7124,7125,7126,7150,
+                                  7151,7152,7153,7154,7155,7156,7157,7158,7159,7161,7162,7163,7164,
+                                  7165,7166,7167,7168,7169,7171,7172,7174,7175,7182,7186,7187,7188,
+                                  7189,7190,7192,7193,7194,7195,7196,7197,7198,7200,7201,7202,7203,
+                                  7205,7206,7207,7208,7209,7210,7211,7212,7213,7214,7215,7216,7217,
+                                  7218,7219,7220,7221,7222,7223,7224,7225,7262,7263,7264,7265,7266,
+                                  7267,7268,7269,7270,7272,7298,7299,7300,7301,7312,7315,7316,7317,
+                                  7318,7319,7320,7321,7322,7323,7325,7326,7327,7440,7441,7442,7443,
+                                  7444,7445,7446,7447,7448,7449,7561,7563,7564,7565,7567,7568,740,
+                                  746,1004,1006,1009;
+
+	setarray .RandomItem_Hard_1[0],702,703,704,705,711,712,713,715,716,901,902,903,904,905,906,907,908,
+                                  909,910,911,912,913,914,915,916,917,918,919,920,921,922,923,924,925,
+                                  926,928,929,930,931,932,934,935,936,937,938,939,940,941,942,943,944,
+                                  945,946,947,948,949,950,951,952,953,954,955,956,957,958,959,960,961,
+                                  962,963,964,965,966,967,998,999,1001,1002,1003,1012,1013,1014,1015,
+                                  1016,1017,1018,1019,1020,1021,1022,1023,1024,1025,1026,1027,1028,
+                                  1031,1032,1033,1034,1035,1036,1037,1038,1039,1040,1041,1042,1043,
+                                  1044,1045,1046,1048,1050,1051,1052,1053,1054,1055,1056,1057,1058,
+                                  1059,1060,1061,1062,1063,1064,7001,7002,7003,7004,7005,7006,7007,
+                                  7008,7009,7010,7011,7012,7013,7014,7015,7016,7017,7030,7031,7032,
+                                  7033,7038,7041,7043,7047,7053,7054,7062,7063,7064,7065,7066,7067,
+                                  7068,7069,7070,7071,7072,7095,7097,7098,7100,7101,7106,7107,7110,
+                                  7111,7112,7115,7116,7117,7120,7121,7122,7123,7124,7125,7126,7150,
+                                  7151,7152,7153,7154,7155,7156,7157,7158,7159,7161,7162,7163,7164,
+                                  7165,7166,7167,7168,7169,7171,7172,7174,7175,7182,7186,7187,7188,
+                                  7189,7190,7192,7193,7194,7195,7196,7197,7198,7200,7201,7202,7203,
+                                  7205,7206,7207,7208,7209,7210,7211,7212,7213,7214,7215,7216,7217,
+                                  7218,7219,7220,7221,7222,7223,7224,7225,7262,7263,7264,7265,7266,
+                                  7267,7268,7269,7270,7272,7298,7299,7300,7301,7312,7315,7316,7317,
+                                  7318,7319,7320,7321,7322,7323,7325,7326,7327,7440,7441,7442,7443,
+                                  7444,7445,7446,7447,7448,7449,7561,7563,7564,7565,7567,7568,740,
+                                  746,1004,1006,1009;
+
+	setarray .RandomItem_Hardcore_1[0],702,703,704,705,711,712,713,715,716,901,902,903,904,905,906,907,908,
+                                  909,910,911,912,913,914,915,916,917,918,919,920,921,922,923,924,925,
+                                  926,928,929,930,931,932,934,935,936,937,938,939,940,941,942,943,944,
+                                  945,946,947,948,949,950,951,952,953,954,955,956,957,958,959,960,961,
+                                  962,963,964,965,966,967,998,999,1001,1002,1003,1012,1013,1014,1015,
+                                  1016,1017,1018,1019,1020,1021,1022,1023,1024,1025,1026,1027,1028,
+                                  1031,1032,1033,1034,1035,1036,1037,1038,1039,1040,1041,1042,1043,
+                                  1044,1045,1046,1048,1050,1051,1052,1053,1054,1055,1056,1057,1058,
+                                  1059,1060,1061,1062,1063,1064,7001,7002,7003,7004,7005,7006,7007,
+                                  7008,7009,7010,7011,7012,7013,7014,7015,7016,7017,7030,7031,7032,
+                                  7033,7038,7041,7043,7047,7053,7054,7062,7063,7064,7065,7066,7067,
+                                  7068,7069,7070,7071,7072,7095,7097,7098,7100,7101,7106,7107,7110,
+                                  7111,7112,7115,7116,7117,7120,7121,7122,7123,7124,7125,7126,7150,
+                                  7151,7152,7153,7154,7155,7156,7157,7158,7159,7161,7162,7163,7164,
+                                  7165,7166,7167,7168,7169,7171,7172,7174,7175,7182,7186,7187,7188,
+                                  7189,7190,7192,7193,7194,7195,7196,7197,7198,7200,7201,7202,7203,
+                                  7205,7206,7207,7208,7209,7210,7211,7212,7213,7214,7215,7216,7217,
+                                  7218,7219,7220,7221,7222,7223,7224,7225,7262,7263,7264,7265,7266,
+                                  7267,7268,7269,7270,7272,7298,7299,7300,7301,7312,7315,7316,7317,
+                                  7318,7319,7320,7321,7322,7323,7325,7326,7327,7440,7441,7442,7443,
+                                  7444,7445,7446,7447,7448,7449,7561,7563,7564,7565,7567,7568,740,
+                                  746,1004,1006,1009;
+
+
+	setarray .Hunt_Shop[0],607,1,608,5,521,5,12080,10;
+
+	set .HuntFeeRST,300000;
+
+	bindatcmd "challenge",strnpcinfo(0)+"::OnCHC_CMD";
+
+	for(set .@i,0; .@i<getarraysize(.Hunt_Info$); set .@i,.@i+10)
+		setarray .mn_idx$[getarraysize(.mn_idx$)],""+.@i+"";
+
+	query_sql "CREATE TABLE IF NOT EXISTS `chc_rank` (`id` int(11) NOT NULL AUTO_INCREMENT,`name` varchar(32) NOT NULL,`total` smallint(6) NOT NULL,PRIMARY KEY (`id`))";
+
+	npcshopattach "ChallengeSHP";
+	npcshopdelitem "ChallengeSHP",501;
+
+	for(set .@i,0; .@i<getarraysize(.Hunt_Shop); set .@i,.@i+2)
+		npcshopadditem "ChallengeSHP",.Hunt_Shop[.@i],1;
+end;
+}
+
+-	shop	ChallengeSHP	FAKE_NPC,501:-1

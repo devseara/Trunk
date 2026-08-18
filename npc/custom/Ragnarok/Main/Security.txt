@@ -1,0 +1,468 @@
+/*====================================================
+* Security mode, protect player transanction
+* [Cydh]
+* house.bad@gmail.com
+* ---------------------------------------------------*/
+
+-	script	Security Manager	-1,{
+	OnSecuSettings:
+		.@isSet = (getstrlen(#SecuCode$) > 0) ? 1 :0;
+		if (.@isSet == 0) {
+			if (is_security()) {
+				.@secMsg$ = "^33CC33Forced On^000000 ^ff0000(Not set yet)^000000";
+			}
+			else {
+				.@secMsg$ = "^ff0000Not set yet^000000";
+			}
+		}
+		else {
+			.@secMsg$ = "^33CC33On^000000";
+		}
+
+		if (is_security(getcharid(0))) {
+			.@traMsg$ = "^ff0000Denied^000000";
+			.@traMenuMsg$ = "Allow Transaction";
+			if (.@isSet == 0 && !$SecuMode) {
+				.@traMsg$ = "^33CC33Allowed^000000";
+			}
+			.@unlockTrans = 1;
+		}
+		else {
+			.@traMsg$ = "^33CC33Allowed^000000";
+			.@traMenuMsg$ = "Deny Transaction";
+		}
+
+		if (#CyACCOUNTLOCK) {
+			.@accMsg$ = "^ff0000Denied^000000";
+			.@accMenuMsg$ = "Allow Char Deletion";
+			.@unlockAccount = 1;
+		}
+		else {
+			.@accMsg$ = "^33CC33Allowed^000000";
+			.@accMenuMsg$ = "Deny Char Deletion";
+		}
+
+		mes .npcname$;
+		mes "Security status: "+.@secMsg$;
+		mes "Transaction status: "+.@traMsg$;
+		mes "Char deletion: "+.@accMsg$;
+		next;
+
+		.@menu$ = "Info:";
+		if (.@isSet == 1) {
+			.@menu$ = .@menu$+"Change Security Code:"+.@traMenuMsg$+":"+.@accMenuMsg$+":Remove Security:^999999Close^000000:";
+		}
+		else {
+			.@menu$ = .@menu$+"Activate the Security::::^999999Close^000000:";
+		}
+		if (getgmlevel() >= .secuGMCanSet){
+			.@menu$ = .@menu$+"Global Setings";
+		}
+
+		switch(select(.@menu$)) {
+			case 1: // Info
+				callsub(OnSecuInfo);
+				break;
+			case 2: // Change/Activate
+				if (.@isSet == 1)
+					callsub(OnSecuChangeCode);
+				else
+					callsub(OnSetSecuCode);
+				break;
+			case 3: // Deny/Allow Trans
+				callsub(OnSecuTransaction,.@unlockTrans);
+				break;
+			case 4: // Deny/Allow Delete
+				callsub(OnSecuLockAccount,.@unlockAccount);
+				break;
+			case 5: // Remove
+				callsub(OnSecuRemove);
+				break;
+			case 7: // Global Set
+				callsub(OnSecuSetup);
+				break;
+		}
+		close;
+
+	OnSecuInfo:
+		next;
+		.@secuConfig = getbattleflag("security_mode");
+		mes .npcname$;
+		mes "This security mode will prevent some activities such as:";
+		if (.@secuConfig&SECU_DROP)				mes "-> Drop item(s).";
+		if (.@secuConfig&SECU_VENDING)			mes "-> Buy item from Vending shop.";
+		if (.@secuConfig&SECU_VENDING_OPEN)		mes "-> Open a shop by Vending.";
+		if (.@secuConfig&SECU_BUYINGSTORE)		mes "-> Sell item to Buyingstore.";
+		if (.@secuConfig&SECU_BUYINGSTORE_OPEN)	mes "-> Open a new Buyingstore";
+		if (.@secuConfig&SECU_TRADE)			mes "-> Trade with other player.";
+		if (.@secuConfig&SECU_GUILD_STORAGE)	mes "-> Add/Put item from/to Guild Storage.";
+		if (.@secuConfig&SECU_BREAKGUILD)		mes "-> Break a guild";
+		if (.@secuConfig&SECU_RESET_ITEM)		mes "-> Clear items on inventory, cart, or storage.";
+		if (.@secuConfig&SECU_NPCTRADE)			mes "-> Transaction with NPC.";
+		if (.@secuConfig&SECU_REMOVE_OPT)		mes "-> Remove option (cart, falcon, warg)";
+		if (.@secuConfig&SECU_COMPOUND)			mes "-> Compund card into equip.";
+		if (.@secuConfig&SECU_DELHOMUN)			mes "-> Delete homunculus.";
+		if (.@secuConfig&SECU_MAIL)				mes "-> Open mail.";
+		if (.@secuConfig&SECU_AUCTION)			mes "-> Open auction.";
+		if (.@secuConfig&SECU_RESET_SKILL_STAT)	mes "-> Reset status/skill.";
+		if (.@secuConfig&SECU_FEEDING)			mes "-> Feed Homunculus/Pet";
+		if (.@secuConfig&SECU_OTHER)			mes "-> etc.";
+		return;
+
+	OnSecuChangeCode:
+		next;
+		mes .npcname$;
+		//if (getstrlen(#SecuCode$) > 0) {
+		if (is_security()) {
+			mes "Are you sure want to change your current security code?";
+			next;
+			switch (select("^999999Cancel^000000:Sure")) {
+				case 1:
+					close;
+					break;
+				case 2:
+					next;
+					mes .npcname$;
+					mes "Insert your ^0000ffcurrent^000000 security code, now.";
+					input .@currentSecuCode$;
+					.@currentSecuCode$ = md5(.@currentSecuCode$);
+					if (#SecuCode$ != .@currentSecuCode$){
+						mes "^ff0000You entered wrong security code. Try again!^000000";
+						close;
+					}
+					break;
+			}
+		}
+		callsub(OnSetSecuCode);
+		end;
+
+	OnSetSecuCode:
+		mes "Insert your ^339933NEW^000000 security code.";
+		mes "^ff0000- Must be MORE than "+.secuCharMin+" characters!";
+		mes "- Must be LESS than "+.secuCharMax+" characters!";
+		input .@newSecuCode1$;
+		if (getstrlen(.@newSecuCode1$) < .secuCharMin || getstrlen(.@newSecuCode1$) > .secuCharMax) {
+			mes "^ff0000Follow the instruction above! Try again later.^000000";
+		}
+		else {
+			mes "-----------------------------------";
+			mes "^339933Re-insert your new^000000 security code.";
+			input .@newSecuCode2$;
+
+			.@md5SecuCode1$ = md5(""+.@newSecuCode1$+"");
+			.@md5SecuCode2$ = md5(""+.@newSecuCode2$+"");
+
+			if (.@md5SecuCode1$ != .@md5SecuCode2$) {
+				mes "^ff0000The security code is not match. Try again later!^000000";
+			}
+			else{
+				mes "Security code has been set successfully!";
+				#SecuCode$ = .@md5SecuCode2$;
+				setsecurity 1,getcharid(0);
+				message strcharinfo(0),"Security code has been set successfully!";
+			}
+		}
+		next;
+		callsub(OnSecuSettings);
+		close;
+
+	OnSecuTransaction:
+		if (getarg(0) == 1) {
+			callsub(OnSecuEnableTrans);
+		}
+		else {
+			callsub(OnSecuDisableTrans);
+		}
+		end;
+
+	OnSecuEnableTrans:
+		//if (!(getstrlen(#SecuCode$))) {
+		if (!is_security()) {
+			callsub(OnSetSecuCode);
+			end;
+		}
+		else {
+			next;
+			mes .npcname$;
+			mes "Input your security code";
+			next;
+			input .@inSecuCode$;
+			.@md5inSecuCode$ = md5(""+.@inSecuCode$+"");
+			if (#SecuCode$ == .@md5inSecuCode$){
+				mes .npcname$;
+				mes "You are allowed to do any transaction now.";
+				setsecurity 0,getcharid(0);
+				next;
+			}
+			else {
+				mes .npcname$;
+				mes "Wrong security code";
+				next;
+			}
+		}
+		callsub(OnSecuSettings);
+		end;
+
+	OnSecuDisableTrans:
+		next;
+		mes .npcname$;
+		mes "Do you want to deny your transaction?";
+		menu "Yes",OnSecuActivate,"No",-;
+		close;
+
+	OnSecuActivate:
+		next;
+		mes .npcname$;
+		mes "You can not do any transaction now!";
+		setsecurity 1,getcharid(0);
+		next;
+		callsub(OnSecuSettings);
+		end;
+
+	OnSecuLockAccount:
+		if (getarg(0) == 1) {
+			next;
+			mes .npcname$;
+			mes "Input your security code to allow char deletion";
+			next;
+			input .@inSecuCode$;
+			.@md5inSecuCode$ = md5(""+.@inSecuCode$+"");
+			if (#SecuCode$ == .@md5inSecuCode$){
+				mes .npcname$;
+				mes "^FF0000Char deletion is enabled now, be carefull!^000000";
+				#CyACCOUNTLOCK = 0;
+			}
+			else {
+				mes .npcname$;
+				mes "Wrong security code";
+			}
+		}
+		else {
+			next;
+			mes .npcname$;
+			mes "Do you want to deny your char deletion?";
+			switch(select("Yes:No")) {
+				case 1:
+					mes "^006100Char deletion is denied now^000000";
+					#CyACCOUNTLOCK = 1;
+					break;
+			}
+		}
+		close;
+
+	OnSecuRemove:
+		next;
+		mes .npcname$;
+		mes "Do you really want to remove your security?";
+		mes "^ff0000Your account will be risk from unknown logger to move your items.^000000";
+		menu "Sure I will remove it",OnSecuRemoveYes,"Close",-;
+		close;
+
+	OnSecuRemoveYes:
+		next;
+		mes .npcname$;
+		mes "Input your security code";
+		next;
+		input .@inSecuCode$;
+		.@md5inSecuCode$ = md5(""+.@inSecuCode$+"");
+		if (#SecuCode$ == .@md5inSecuCode$){
+			mes .npcname$;
+			mes "Your security code is removed, you can reset your security code again.";
+			setsecurity 0,getcharid(0);
+			#SecuCode$ = "";
+			#CyACCOUNTLOCK = 0;
+			close2;
+			//atcommand "@kick "+strcharinfo(0)+"";
+			end;
+		}
+		else {
+			mes .npcname$;
+			mes "Wrong security code, you can't remove your code.";
+			next;
+			callsub(OnSecuSettings);
+			end;
+		}
+
+	OnSecuSetup:
+		if (!$SecuMode)	.@secuMode$ = "^0097FFUnsecure^000000";
+		else			.@secuMode$ = "^FF6A00Force to set^000000";
+		next;
+		mes .npcname$;
+		mes "Security Mode:";
+		mes "    "+.@secuMode$+"";
+		mes "Auto-Announcer:";
+		if ($SecuAnnounce)	.@secuAutoAnn$ = "^0000FFActive^000000";
+		else				.@secuAutoAnn$ = "^FF0000Inactive^000000";
+		mes "    "+.@secuAutoAnn$+" (every: ^339933"+$SecuAnnounceTime+" minute^000000)";
+		next;
+		menu "Change the Mode",OnSecuSetupChange,"Auto-Announcer",OnSecuSetAnnouncer,"Reset player's security",OnSecuSetupReset,"Close",-;
+		close;
+
+	OnSecuSetupChange:
+		next;
+		mes .npcname$;
+		mes "^FF3333---- Security Mode ----^000000";
+		mes "Input the security mode for player to set their @security code:";
+		mes "^0097FF0. Don't force to set^000000";
+		mes "^FF6A001. Force to set (recommended)^000000";
+		next;
+		input .@secMode;
+		$SecuMode = .@secMode;
+		if ($SecuMode == 0)	.@secuMode$ = "^0097FFUnsecure^000000";
+		else 				.@secuMode$ = "^FF6A00Force to set^000000";
+		mes .npcname$;
+		mes "Security mode has been set to "+.@secuMode$+"";
+		mes "This setting will be affected to players after they log out";
+		next;
+		callsub(OnSecuSettings);
+		end;
+
+	OnSecuSetupReset:
+		close2;
+		callsub(OnResets);
+		end;
+	end;
+
+	OnSecuSetAnnouncer:
+		next;
+		mes .npcname$;
+		mes "^FF3333---- Auto-Announcer ----^000000";
+		mes "Status:";
+		if ($SecuAnnounce)	mes "   ^0000FFActive^000000";
+		else				mes "   ^FF0000Inactive^000000";
+		mes "Announce in every:";
+		mes "   ^339933"+$SecuAnnounceTime+" minute^000000";
+		switch(select("Turn On/Off:Set the delay:Close")) {
+			case 1:
+				next;
+				mes .npcname$;
+				mes "Are you sure?";
+				if ($SecuAnnounce)	menu "Turn it Off",OnSecuAnnouncerOff,"Close",-;
+				else				menu "Turn it On",OnSecuAnnouncerOn,"Close",-;
+				break;
+			case 2:
+				next;
+				mes .npcname$;
+				mes "Current is ^339933"+$SecuAnnounceTime+"^000000 minute";
+				input .@inAnnDelay,0,7200;
+				mes "New value is ^0000FF"+.@inAnnDelay+"^000000 minute";
+				$SecuAnnounceTime = .@inAnnDelay;
+				break;
+			default:
+				close;
+				break;
+		}
+		next;
+		callsub(OnSecuSettings);
+		end;
+
+	OnSecuAnnouncerOff:
+		next;
+		mes .npcname$;
+		mes "Auto-Announcer is ^FF0000OFF^000000";
+		$SecuAnnounce = 0;
+		next;
+		callsub(OnSecuSettings);
+		end;
+
+	OnSecuAnnouncerOn:
+		next;
+		mes .npcname$;
+		mes "Auto-Announcer is ^0000FFON^000000";
+		$SecuAnnounce = 1;
+		next;
+		callsub(OnSecuSettings);
+		end;
+
+	OnPCLoginEvent:
+		if ($SecuMode == 1)
+			setsecurity 1,getcharid(0);
+		else{
+			if ((getstrlen(#SecuCode$)) > 0)
+				setsecurity 1,getcharid(0);
+			else
+				setsecurity 0,getcharid(0);
+		}
+		if (!(getstrlen(#SecuCode$)) && $SecuMode){
+			message strcharinfo(0),"Make sure your account is protected, set your security code!";
+		}
+		message strcharinfo(0),"Use @security to set your security system!";
+		end;
+
+	OnResets:
+		mes .npcname$;
+		mes "You can reset account's Security Code";
+		mes "Of course you must know player name who you want to reset";
+		mes "Insert the ^ff0000char name^000000 clearly!";
+		input .@resetSecuName$;
+		.@res = query_sql("SELECT `account_id`, `char_id`, `name` FROM `char` WHERE `name` = '"+escape_sql(.@resetSecuName$)+"'",.@resetAccID,.@resetCharID,.@resetCharName$);
+		if (.@res < 0 || .@resetAccID <= 0) {
+			next;
+			mes .npcname$;
+			mes "No player found.";
+			close;
+		}
+		else {
+			next;
+			mes .npcname$;
+			mes "Player found.";
+			mes "Name : ^990000"+.@resetCharName$+"^000000";
+			mes "AccountID : ^009900"+.@resetAccID+"^000000";
+			mes "CharID : ^333399"+.@resetCharID+"^000000";
+			//query_sql "SELECT `value` FROM `global_reg_value` WHERE `account_id` = "+.@resetAccID+" AND CONVERT(`str` USING utf8) = '#SecuCode$' AND `char_id` = '0'",.@resetSecuCode$;
+			query_sql("SELECT `value` FROM `acc_reg_str` WHERE `account_id` = "+.@resetAccID+" AND CONVERT(`key` USING utf8) = '#SecuCode$' LIMIT 1",.@resetSecuCode$);
+			if (getstrlen(.@resetSecuCode$) <= 0){
+				mes "Security Code : ^ff0000Not set^000000";
+				mes "You can't reset this security code.";
+				close;
+			}
+			else {
+				mes "Security Code : ^663399Set^000000";
+				mes "Do you want to reset account's Security Code";
+				if (select("Yes","No") == 1) {
+					next;
+					mes .npcname$;
+					//query_sql("DELETE FROM `global_reg_value` WHERE `account_id` = '"+.@resetAccID+"' AND CONVERT(`str` USING utf8) = '#SecuCode$' AND `char_id` = '0' AND `value` = '"+.@resetSecuCode$+"' LIMIT 1");
+					query_sql("DELETE FROM `acc_reg_str` WHERE `account_id` = '"+.@resetAccID+"' AND CONVERT(`key` USING utf8) = '#SecuCode$' AND `value` = '"+.@resetSecuCode$+"' LIMIT 1");
+					query_sql("DELETE FROM `acc_reg_num` WHERE `account_id` = '"+.@resetAccID+"' AND CONVERT(`key` USING utf8) = '#CyACCOUNTLOCK' LIMIT 1");
+					mes "Account's Security Code has been ^0000ffdeleted successfully^000000";
+					atcommand "@kick "+.@resetCharName$;
+					next;
+					callsub(OnSecuSettings);
+					end;
+				}
+				else {
+					close;
+				}
+			}
+		}
+		end;
+
+	OnInit:
+		.secuCharMin = 4;
+		.secuCharMax = 23;
+		.secuGMCanSet = 99;
+		.npcname$ = "^ff0000[ Security ]^000000";
+		bindatcmd "security",strnpcinfo(3)+"::OnSecuSettings",0,99;
+		end;
+}
+
+-	script	SecurityAnnouncer	-1,{
+	OnInit:
+		if (!$SecuAnnounce)		$SecuAnnounce = 1;
+		if (!$SecuAnnounceTime)	$SecuAnnounceTime = 30;
+		while($SecuAnnounce && $SecuAnnounceTime > 0) {
+			//Add these messages by yourself
+			switch(rand(5)) {
+				case 1: $@SecurityMes$ = "Do not forget turn on your @security.";	break;
+				case 2: $@SecurityMes$ = "The enabled security will secure your account transaction.";	break;
+				case 3: $@SecurityMes$ = "Staffs never ask your security code and private datas.";	break;
+				case 4: $@SecurityMes$ = "Your account is your own responsibility, secure it for yourself.";	break;
+				default: $@SecurityMes$ = "Remember your security code and don't share it.";	break;
+			}
+			announce $@SecurityMes$,bc_blue;
+			sleep ($SecuAnnounceTime*60000);
+		}
+	end;
+}
+
