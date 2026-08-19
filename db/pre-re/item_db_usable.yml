@@ -2043,7 +2043,7 @@ Body:
     AegisName: Siege_White_Potion
     Name: WoE White Potion
     Type: Healing
-    Weight: 100
+    Weight: 30
     Trade:
       NoDrop: true
       NoTrade: true
@@ -2058,7 +2058,7 @@ Body:
     AegisName: Siege_Blue_Potion
     Name: WoE Blue Potion
     Type: Healing
-    Weight: 100
+    Weight: 30
     Trade:
       NoDrop: true
       NoTrade: true
