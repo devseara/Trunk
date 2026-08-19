@@ -770,4 +770,13 @@ OnPCLogoutEvent:
 end;
 }
 
+-	script	GOLDPCCAFE	-1,{
+    end;
 
+OnHourlyTimer:
+    dispbottom("[ Character Points ]");
+    dispbottom("You have " + callfunc("F_InsertComma", #Goldpc_Points) + " Hourly Points.");
+    dispbottom("You have " + callfunc("F_InsertComma", #PVPPOINTS) + " PvP Points.");
+    dispbottom("You have " + callfunc("F_InsertComma", #WOEPOINTS) + " WoE Points.");
+    end;
+}

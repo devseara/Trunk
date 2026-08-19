@@ -26237,6 +26237,7 @@ void clif_parse_dynamic_npc( int fd, map_session_data* sd ){
 		clif_dynamicnpc_result( *sd, DYNAMICNPC_RESULT_SUCCESS );
 		// Send current points so client displays correct balance when shop opens (no relog needed)
 		clif_goldpc_info( *sd );
+		npc_event_do_id( "GOLDPCCAFE::OnHourlyTimer", sd->id );
 	}else{
 		clif_dynamicnpc_result( *sd, DYNAMICNPC_RESULT_UNKNOWN );
 	}

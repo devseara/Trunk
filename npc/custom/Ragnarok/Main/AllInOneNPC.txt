@@ -1,0 +1,233 @@
+prontera,104,98,6	script	All In One Girl	727,{
+callfunc "F_NPC_NAME";
+mes "Hello, ^66CC66" + strcharinfo(0) + "^000000";
+mes "What would you";
+mes "like to do today?";
+next;
+switch(select("Rental Services:Platinum Skills:Reset Skill & Stats")) {
+
+case 1:
+	callfunc "F_NPC_NAME";
+	mes "Please choose what you'd like to rent.";
+	mes "^0000FF15,000z - Cart^000000";
+	mes "^0000FF15,000z - Falcon^000000";
+	mes "^0000FF15,000z - Peco^000000";
+	next;
+	switch(select("Cart:Falcon:Peco")) {
+		case 1:
+			if (Zeny < 15000) goto L_NoZeny;
+			if((BaseClass == Job_Merchant || BaseJob == Job_SuperNovice) && checkcart() == 0 && getskilllv("MC_PUSHCART")>0) {
+				set Zeny, Zeny - 15000;
+				setcart;
+				close;
+			}else{
+				callfunc "F_NPC_NAME";
+				mes "Sorry ^66CC66" + strcharinfo(0) + "";
+				mes "Please make sure you";
+				mes "are the required job";
+				mes "and have the";
+				mes "required skill.";
+				close;
+			}
+		case 2:
+			if (Zeny < 15000) goto L_NoZeny;
+			if(BaseJob != Job_Archer && BaseClass == Job_Archer && checkfalcon() == 0 && getskilllv("HT_FALCON")>0) {
+				set Zeny, Zeny - 15000;
+				setfalcon;
+				close;
+			}else{
+				callfunc "F_NPC_NAME";
+				mes "Sorry ^66CC66" + strcharinfo(0) + "";
+				mes "Please make sure you";
+				mes "are the required job";
+				mes "and have the";
+				mes "required skill.";
+				close;
+			}					
+		case 3:
+			if (Zeny < 15000) goto L_NoZeny;
+			if (BaseJob != Job_Swordman && BaseClass == Job_Swordman && checkriding() == 0 && getskilllv("KN_RIDING")>0) {
+				set Zeny, Zeny - 15000;
+				setriding;
+				close;
+			}else{
+				callfunc "F_NPC_NAME";
+				mes "Sorry ^66CC66" + strcharinfo(0) + "";
+				mes "Please make sure you";
+				mes "are the required job";
+				mes "and have the";
+				mes "required skill.";
+				close;
+			}
+	}
+case 2:
+	callfunc "F_NPC_NAME";
+	mes "Do you really want the special skills";
+	mes "available to your job.";
+	mes "Would you like these skills now?";
+	mes "Price: ^0000FF300,000z^000000";
+	next;
+	if (select("Yes please:No") == 2) {
+		mes "[ All in One C]";
+		mes "Have a nice day... >.>";
+		close;
+	}
+	if (Zeny < 300000) goto L_NoZeny;
+	
+	skill 142,1,0; // First Aid
+	if (BaseClass == Job_Novice) {
+		skill 143,1,0; // Play Dead
+	} else if (BaseClass == Job_Swordman) {
+		skill 144,1,0; // Moving HP-Recovery
+		skill 145,1,0; // Fatal Blow
+		skill 146,1,0; // Auto Berserk
+	} else if (BaseClass == Job_Mage) {
+		skill 157,1,0; // Energy Coat
+		
+	} else if (BaseClass == Job_Archer) {
+		skill 147,1,0; // Arrow Crafting
+		skill 148,1,0; // Arrow Repel
+		
+	} else if (BaseClass == Job_Merchant) {
+		skill 153,1,0; // Cart Revolution
+		skill 154,1,0; // Change Cart
+		skill 155,1,0; // Crazy Uproar
+		
+	} else if (BaseClass == Job_Thief) {
+		skill 149,1,0; // Sand Attack
+		skill 150,1,0; // Back Slide
+		skill 151,1,0; // Find Stone
+		skill 152,1,0; // Stone Fling
+		
+	} else if (BaseClass == Job_Acolyte) {
+		skill 156,1,0; // Holy Light
+		
+	}
+	if (Class == Job_Knight || Class == Job_Lord_Knight) {
+		skill 1001,1,0; // Charge Attack
+		
+	} else if (Class == Job_Crusader || Class == Job_Paladin) {
+		skill 1002,1,0; // Shrink
+		
+	} else if (Class == Job_Wizard || Class == Job_High_Wizard) {
+		skill 1006,1,0; // Sight Blaster
+		
+	} else if (Class == Job_Sage || Class == Job_Professor) {
+		skill 1007,1,0; // Create Elemental Converter
+		skill 1008,1,0; // Elemental Change Water
+		skill 1017,1,0; // Elemental Change Earth
+		skill 1018,1,0; // Elemental Change Fire
+		skill 1019,1,0; // Elemental Change Wind
+		
+	} else if (Class == Job_Hunter || Class == Job_Sniper) {
+		skill 1009,1,0; // Phantasmic Arrow
+		
+	} else if (Class == Job_Bard || Class == Job_Clown) {
+		skill 1010,1,0; // Pang Voice
+		
+	} else if (Class == Job_Dancer || Class == Job_Gypsy) {
+		skill 1011,1,0; // Wink of Charm
+		
+	} else if (Class == Job_Blacksmith || Class == Job_Whitesmith) {
+		skill 1012,1,0; // Unfair Trick
+		
+		skill 1013,1,0; // Greed
+
+	} else if (Class == Job_Alchemist || Class == Job_Creator) {
+		skill 238,1,0; // Bioethics
+		
+	} else if (Class == Job_Assassin || Class == Job_Assassin_Cross) {
+		skill 1003,1,0; // Sonic Acceleration
+		skill 1004,1,0; // Throw Venom Knife
+		
+	} else if (Class == Job_Rogue || Class == Job_Stalker) {
+		skill 1005,1,0; // Close Confine
+		
+	} else if (Class == Job_Priest || Class == Job_High_Priest) {
+		skill 1014,1,0; // Redemptio
+		
+	} else if (Class == Job_Monk || Class == Job_Champion) {
+		skill 1015,1,0; // Ki Translation
+		skill 1016,1,0; // Ki Explosion
+		
+	}
+	set Zeny, Zeny - 300000;
+	specialeffect2 1260;
+	callfunc "F_NPC_NAME";
+	mes "There you go!";
+	mes "Enjoy your new";
+	mes "learned skills.";
+	close;
+	
+
+case 3:
+	callfunc "F_NPC_NAME";
+	mes "What do you want to do?";
+	mes "Reset Skills: ^0000FF1,000,000^000000";
+	mes "Reset Stats: ^0000FF1,000,000^000000";
+	mes "Reset Both: ^0000FF1,500,000^000000";
+	next;
+	switch(select("Reset Skills:Reset Stats:Reset Both:^FF0000Quit")) {
+
+		case 1:
+			if (Zeny < 1000000) goto L_NoZeny;
+			callfunc "F_NPC_NAME";
+			mes "Alright, here we go!";
+			mes "Remember, there's no";
+			mes "going back after this,";
+			mes "and no refunds will be given!";
+			set Zeny,zeny-1000000;
+			ResetSkill;
+			specialeffect2 1271;
+			close;
+
+		case 2:
+			if (Zeny < 1000000) goto L_NoZeny;
+			callfunc "F_NPC_NAME";
+			mes "Alright, here we go!";
+			mes "Remember, there's no";
+			mes "going back after this,";
+			mes "and no refunds will be given!";
+			set Zeny,zeny-1000000;
+			ResetStatus;
+			specialeffect2 1272;
+			close;
+		case 3:
+			if (Zeny < 1500000) goto L_NoZeny;
+			callfunc "F_NPC_NAME";
+			mes "Alright, here we go!";
+			mes "Remember, there's no";
+			mes "going back after this,";
+			mes "and no refunds will be given!";
+			set Zeny,zeny-1500000;
+			ResetSkill;
+			ResetStatus;
+			specialeffect2 1273;
+			close;
+		
+		case 4:
+			close;
+	}
+}
+
+L_NoZeny:
+	callfunc "F_NPC_NAME";
+	mes "^FF0000Sorry, you don't";
+	mes "^FF0000have enough zeny.";
+	mes "Please gather";
+	mes "more and try again.";
+	close;
+
+OnInit:
+	.Active = 1;
+	while( getvariableofnpc(.Active,"All In One Girl") ) {
+
+	PUBTITLE:
+		freeloop(1);
+		showscript "All In One Girl", getnpcid(0), AREA;			
+		sleep 1000; 
+		freeloop(0);
+		goto PUBTITLE;
+	}
+end;
+}
