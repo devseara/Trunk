@@ -13,11 +13,6 @@ prontera,113,103,6	script	Daily Supply	10571,{
 	explode(.@items$,.items$[gettime(DT_DAYOFWEEK)],"|");
 	for(.@i=0;.@i<getarraysize(.@items$);.@i+=2)
 		getitem atoi(.@items$[.@i]),atoi(.@items$[.@i+1]);
-        if (vip_status(VIP_STATUS_ACTIVE)) {
-            rentitem 41000,43200;
-        }else{
-            rentitem 41000,28800;
-        }
 		set #DailyLogin,gettime(DT_YYYYMMDD);
 		#DailyLoginReward = #DailyLoginReward + 1;
 		message strcharinfo(0), "You have successfully claimed todays reward.";

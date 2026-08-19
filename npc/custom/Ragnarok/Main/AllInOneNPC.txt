@@ -152,7 +152,6 @@ case 2:
 		
 	}
 	set Zeny, Zeny - 300000;
-	specialeffect2 1260;
 	callfunc "F_NPC_NAME";
 	mes "There you go!";
 	mes "Enjoy your new";
@@ -178,7 +177,6 @@ case 3:
 			mes "and no refunds will be given!";
 			set Zeny,zeny-1000000;
 			ResetSkill;
-			specialeffect2 1271;
 			close;
 
 		case 2:
@@ -190,7 +188,6 @@ case 3:
 			mes "and no refunds will be given!";
 			set Zeny,zeny-1000000;
 			ResetStatus;
-			specialeffect2 1272;
 			close;
 		case 3:
 			if (Zeny < 1500000) goto L_NoZeny;
@@ -202,7 +199,6 @@ case 3:
 			set Zeny,zeny-1500000;
 			ResetSkill;
 			ResetStatus;
-			specialeffect2 1273;
 			close;
 		
 		case 4:

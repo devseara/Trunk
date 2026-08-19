@@ -1,0 +1,62 @@
+//===== rAthena Script =======================================
+//= Freebies (Account Base)
+//===== By: ==================================================
+//= Meroy of Immortals-RO (http://immortalsro.com)
+//===== Current Version: =====================================
+//= 1.1
+//===== Compatible With: =====================================
+//= rAthena Project
+//===== Description: =========================================
+//= Self explanatory as the titled says.
+//===== Changelogs: ==========================================
+//= 1.1 Second Version
+//===== Additional Comments: =================================
+//= 1.0 Initial Release - [Meroy] 
+//= 1.1 Fixed `@eac` will resolves to 0 (Novice) if no other script assigns it. [secretdataz]
+//============================================================
+new_1-1,65,116,3	script	Freebies	729,{
+
+	set @header$,"[^FF8000Freebies^000000]";
+	if(#NOVICE_Freebie == 1){
+		mes @header$;
+		mes "It seems you're already claimed your freebies!";
+		close2;
+		end;
+	}
+	
+	mes @header$;
+	mes "Welcome to Comodo Dreams";
+	mes "To conquer the world of ragnarok, I need you to understand some of our rules.";
+
+	/*Project:Rebirth Headgears*/
+	//getitembound 40000,1,Bound_Account;
+
+	/*Usables*/
+
+	getitembound 14003,10,Bound_Account;
+	getitembound 12263,10,Bound_Account;
+	getitembound 12208,10,Bound_Account;			
+	getitembound 12210,5,Bound_Account;
+	getitembound 12221,10,Bound_Account;
+	getitembound 12211,5,Bound_Account;			
+	getitembound 12215,10,Bound_Account;		
+	getitembound 12216,10,Bound_Account;		
+	set #NOVICE_Freebie, 1;
+	announce strcharinfo(0) +" A new adventurer enters Comodo Dreams! May the spirit of " + strcharinfo(0) + " bring glory and forge unforgettable stories in our world!",0,0xFFFF90;
+	end;
+
+OnInit:
+	initnpctimer;
+	end;
+
+OnTimer2000:
+	showscript "Comodo Freebie", getnpcid(0), AREA;
+	initnpctimer;
+	end;
+}
+
+new_1-1	mapflag	nowarpto
+new_1-1	mapflag	nowarp
+new_1-1	mapflag	noteleport
+new_1-1	mapflag	noexp
+

@@ -941,6 +941,18 @@ int32 npc_isnear_sub(block_list* bl, va_list args) {
 	return 1;
 }
 
+int32 npc_warp_isnear_sub(struct block_list* bl, va_list args) {
+    struct npc_data *nd = (struct npc_data*)bl;
+
+    if (nd->sc.option & (OPTION_HIDE|OPTION_INVISIBLE))
+        return 0;
+
+	if (nd->subtype == NPCTYPE_WARP)
+		return 1;
+
+	return 0;
+}
+
 bool npc_isnear(block_list * bl) {
 
     if( battle_config.min_npc_vendchat_distance > 0 &&

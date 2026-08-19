@@ -1,0 +1,27 @@
+prontera,114,107,6	script	Potion Converter	749,{
+	callfunc "F_NPC_NAME";
+	mes "Yo, ^5200A3"+strcharinfo(0)+"^000000! I'm Alchia. I can convert your potions. tell me what you need for your journey.";
+	next;
+    switch(select("Convert Potion: ~ ^777777Cancel^000000")) {
+        case 1:
+            callfunc "F_NPC_NAME";
+            callshop("PotionConverter");
+            close2;
+            end;
+        case 2:
+            end;
+    }
+
+OnInit:
+.Active = 1;
+while( getvariableofnpc(.Active,"Potion Converter") ) {
+
+PUBTITLE:
+	freeloop(1);
+	showscript "Potion Converter", getnpcid(0), AREA;			
+	sleep 1000; 
+	freeloop(0);
+	goto PUBTITLE;
+}
+end;
+}

@@ -775,7 +775,8 @@ end;
 
 OnHourlyTimer:
     dispbottom("[ Character Points ]");
-    dispbottom("You have " + callfunc("F_InsertComma", #Goldpc_Points) + " Hourly Points.");
+	dispbottom("You have " + callfunc("F_InsertComma", #CASHPOINTS) + " Cash Points.");
+    dispbottom("You have " + callfunc("F_InsertComma", #ComodoPlaytime) + " Hourly Points.");
     dispbottom("You have " + callfunc("F_InsertComma", #PVPPOINTS) + " PvP Points.");
     dispbottom("You have " + callfunc("F_InsertComma", #WOEPOINTS) + " WoE Points.");
     end;

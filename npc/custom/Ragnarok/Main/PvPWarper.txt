@@ -57,14 +57,14 @@ PvPPointShop:
 end;
 
 OnInit:
-    .map_size = getarraysize(.pvpmaps$);
-    .npc$ = strnpcinfo(0);
     setarray .pvpmaps$,
-                "1@uwrld";// Normal PVP
+        "1@uwrld"; // Normal PVP
 
     setarray .pvpSelect$,
         "Free For All";
 
+    .map_size = getarraysize(.pvpmaps$);
+    .npc$ = strnpcinfo(0);
 
     setarray .@mapflag,
         mf_loadevent,
@@ -88,13 +88,16 @@ OnInit:
         }
     }
 
-
     .Active = 1;
-	while( getvariableofnpc(.Active,strnpcinfo(0)) ) {
-        waitingroom "PvP Warper [ " + F_CountPlayers() +" ]",0;
+    while ( getvariableofnpc(.Active, strnpcinfo(0)) ) {
+    PUBTITLE:
+        freeloop(1);
+        showscript "PvP Warper [ " + F_CountPlayers() + " ]", getnpcid(0), AREA;
         sleep 1000;
-        delwaitingroom;
-	}
+        freeloop(0);
+        goto PUBTITLE;
+    }
+    end;
 
 end;
 

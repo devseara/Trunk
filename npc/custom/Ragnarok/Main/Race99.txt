@@ -1,0 +1,203 @@
+-	script	Level Race Guardian	465,{
+	set .@gm_level, 99; // GM level required to set options
+	set .@maxbase, 99;
+	set .@maxjob, 70;
+	
+	// Default item rewards for 1st, 2nd, and 3rd places
+	setarray .@default_rewards[0], 909, 909, 909; 
+	// Cash point rewards for 1st, 2nd, and 3rd places
+	setarray .@cash_rewards[0], 2000, 1000, 500;
+
+	setarray .@rewardablejobs[0], Job_Lord_Knight, Job_Creator, Job_Assassin_Cross, Job_Clown, Job_Whitesmith, Job_Paladin, Job_Gypsy, Job_Sniper, Job_Champion, Job_High_Priest, Job_Stalker, Job_Professor, Job_High_Wizard;
+
+Begin:
+	mes "[^C71585 Yggdra ^000000]";
+	mes "Hello, " + ((getgmlevel() >= .@gm_level) ? "master! What would you like to do today?" : "are you here for your level race reward?");
+	
+	switch(select(((getgmlevel() >= .@gm_level) ? "Set Rewards:Restart Race" : ":") + ":Claim Reward:Race Info:View Winners Ladder:Cancel")) {
+		case 1:
+			goto SetReward;
+		case 2:
+			goto RestartRace;
+		case 3:
+			goto GetReward;
+		case 4:
+			goto ExplainRace;
+		case 5:
+			goto ShowRewarded;
+		default:
+			end;
+	}
+
+SetReward:
+	clear;
+	mes "[^C71585 Yggdra ^000000]";
+	if ($reward_1st == 0) set $reward_1st, .@default_rewards[0];
+	if ($reward_2nd == 0) set $reward_2nd, .@default_rewards[1];
+	if ($reward_3rd == 0) set $reward_3rd, .@default_rewards[2];
+
+	mes "Current Item Rewards:";
+	mes "1st Place: ^0000FF" + getitemname($reward_1st) + "^000000 (ID: " + $reward_1st + ")";
+	mes "2nd Place: ^0000FF" + getitemname($reward_2nd) + "^000000 (ID: " + $reward_2nd + ")";
+	mes "3rd Place: ^0000FF" + getitemname($reward_3rd) + "^000000 (ID: " + $reward_3rd + ")";
+	next;
+	mes "[^C71585 Yggdra ^000000]";
+	mes "Which reward would you like to change?";
+	switch(select("Change 1st Place Reward:Change 2nd Place Reward:Change 3rd Place Reward:Back")) {
+		case 1:
+			mes "Enter Item ID for 1st Place:";
+			input .@rewardid;
+			set $reward_1st, .@rewardid;
+			break;
+		case 2:
+			mes "Enter Item ID for 2nd Place:";
+			input .@rewardid;
+			set $reward_2nd, .@rewardid;
+			break;
+		case 3:
+			mes "Enter Item ID for 3rd Place:";
+			input .@rewardid;
+			set $reward_3rd, .@rewardid;
+			break;
+		case 4:
+			goto Begin;
+	}
+	mes "Reward updated successfully!";
+	next;
+	goto Begin;
+
+RestartRace:
+	clear;
+	mes "[^C71585 Yggdra ^000000]";
+	mes "^FF0000Are you sure you want to restart the race?^000000";
+	mes "This will clear all 1st, 2nd, and 3rd place winners!";
+	if (select("Yes, restart:No, cancel") == 1) {
+		for (.@i = 0; .@i < getarraysize(.@rewardablejobs); .@i++) {
+			set $rewarded_1st$[.@rewardablejobs[.@i]], "";
+			set $rewarded_2nd$[.@rewardablejobs[.@i]], "";
+			set $rewarded_3rd$[.@rewardablejobs[.@i]], "";
+		}
+		announce "The Level Race has been reset! Be among the top 3 of your class to reach " + .@maxbase + "/" + .@maxjob + " to claim your rewards!", bc_all;
+	}
+	goto Begin;
+
+GetReward:
+	clear;
+	mes "[^C71585 Yggdra ^000000]";
+	mes "Checking status for ^66CC66" + strcharinfo(0) + "^000000...";
+	
+	set .@competitioner, 0;
+	for (.@i = 0; .@i < getarraysize(.@rewardablejobs); .@i++) {
+		if (Class == .@rewardablejobs[.@i]) {
+			set .@competitioner, 1;
+			
+			if (BaseLevel < .@maxbase || JobLevel < .@maxjob) {
+				mes "I'm sorry, but you still need to reach level " + .@maxbase + "/" + .@maxjob + ".";
+				close;
+			}
+			
+			if ($rewarded_1st$[Class] == strcharinfo(0) || $rewarded_2nd$[Class] == strcharinfo(0) || $rewarded_3rd$[Class] == strcharinfo(0)) {
+				mes "You have already claimed your Level Race reward!";
+				close;
+			}
+
+			// Determine available rank place
+			if ($rewarded_1st$[Class] == "") {
+				set .@place, 1;
+			} else if ($rewarded_2nd$[Class] == "") {
+				set .@place, 2;
+			} else if ($rewarded_3rd$[Class] == "") {
+				set .@place, 3;
+			} else {
+				mes "Sorry! All 3 reward spots for " + jobname(Class) + " have already been claimed.";
+				close;
+			}
+
+			goto GiveReward;
+		}
+	}
+
+	if (.@competitioner == 0) {
+		mes "Your class is not eligible for this level race.";
+	}
+	close;
+
+GiveReward:
+	if ($reward_1st == 0) set $reward_1st, .@default_rewards[0];
+	if ($reward_2nd == 0) set $reward_2nd, .@default_rewards[1];
+	if ($reward_3rd == 0) set $reward_3rd, .@default_rewards[2];
+
+	if (.@place == 1) {
+		set $rewarded_1st$[Class], strcharinfo(0);
+		set .@item_given, $reward_1st;
+		set .@cash_given, .@cash_rewards[0];
+		set .@suffix$, "1st Place";
+	} else if (.@place == 2) {
+		set $rewarded_2nd$[Class], strcharinfo(0);
+		set .@item_given, $reward_2nd;
+		set .@cash_given, .@cash_rewards[1];
+		set .@suffix$, "2nd Place";
+	} else if (.@place == 3) {
+		set $rewarded_3rd$[Class], strcharinfo(0);
+		set .@item_given, $reward_3rd;
+		set .@cash_given, .@cash_rewards[2];
+		set .@suffix$, "3rd Place";
+	}
+
+	clear;
+	mes "[^C71585 Yggdra ^000000]";
+	mes "Congratulations!";
+	mes "You claimed ^0000FF" + .@suffix$ + "^000000 for the " + jobname(Class) + " class!";
+	
+	getitem .@item_given, 1;
+	set #CASHPOINTS, #CASHPOINTS + .@cash_given;
+	
+	announce strcharinfo(0) + " claimed " + .@suffix$ + " in the Level Race for " + jobname(Class) + " and won " + getitemname(.@item_given) + " + " + .@cash_given + " Cash Points!", bc_all;
+	close;
+
+ExplainRace:
+	clear;
+	mes "[^C71585 Yggdra ^000000]";
+	mes "The race is on! Be one of the ^0000FFfirst 3 players^000000 of your class to reach Base Level " + .@maxbase + " and Job Level " + .@maxjob + "!";
+	mes " ";
+	mes "Rewards Breakdown:";
+	mes "1st Place: Top Item + " + .@cash_rewards[0] + " Cash Points";
+	mes "2nd Place: Reward Item + " + .@cash_rewards[1] + " Cash Points";
+	mes "3rd Place: Reward Item + " + .@cash_rewards[2] + " Cash Points";
+	next;
+	goto Begin;
+
+ShowRewarded:
+	clear;
+	mes "[^C71585 Yggdra ^000000]";
+	mes "^0000FFLevel Race Winners Ladder^000000";
+	mes "----------------------------------";
+	for (.@i = 0; .@i < getarraysize(.@rewardablejobs); .@i++) {
+		set .@job, .@rewardablejobs[.@i];
+		mes "^0000FF" + jobname(.@job) + "^000000:";
+		mes " 1st: " + (($rewarded_1st$[.@job] != "") ? "^008800" + $rewarded_1st$[.@job] + "^000000" : "^FF0000None^000000");
+		mes " 2nd: " + (($rewarded_2nd$[.@job] != "") ? "^008800" + $rewarded_2nd$[.@job] + "^000000" : "^FF0000None^000000");
+		mes " 3rd: " + (($rewarded_3rd$[.@job] != "") ? "^008800" + $rewarded_3rd$[.@job] + "^000000" : "^FF0000None^000000");
+		mes " ";
+	}
+	next;
+	goto Begin;
+
+OnPCLoadMapEvent:
+	showevent 4,0;
+	end;
+
+OnInit:
+    .Active = 1;
+    while( getvariableofnpc(.Active,"Level Race Guardian") ) {
+    PUBTITLE:
+        freeloop(1);
+        showscript "Race to 99 Rewards", getnpcid(0), AREA;			
+        sleep 1000; 
+        freeloop(0);
+        goto PUBTITLE;
+    }
+}
+
+// Duplicates
+prontera,105,71,6	duplicate(Level Race Guardian)	Level Race Guardian#prt	465

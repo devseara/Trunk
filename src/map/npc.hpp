@@ -1648,6 +1648,7 @@ void npc_setdisplayname(npc_data* nd, const char* newname);
 void npc_setclass(npc_data* nd, int16 class_);
 npc_data* npc_name2id(const char* name);
 int32 npc_isnear_sub(block_list* bl, va_list args);
+int32 npc_warp_isnear_sub(struct block_list* bl, va_list args);
 bool npc_isnear(block_list * bl);
 
 int32 npc_get_new_npc_id(void);

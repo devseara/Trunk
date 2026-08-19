@@ -13483,6 +13483,19 @@ static void clif_parse_UseSkillToPosSub( int32 fd, map_session_data& sd, uint16 
 		sd.idletime_hom = last_tick;
 	if (battle_config.mer_idle_no_share && sd.md && battle_config.idletime_mer_option&IDLE_USESKILLTOPOS)
 		sd.idletime_mer = last_tick;
+	if( skill_id == AL_WARP && battle_config.min_npc_warp_distance > 0){
+		struct block_list pos;
+		pos.m = sd.m;
+		pos.x = x;
+		pos.y = y;
+		if(map_foreachinallrange(npc_warp_isnear_sub, &pos, battle_config.min_npc_warp_distance, BL_NPC, 0) ){
+			char output[70];
+			sprintf(output, "You must be at least %d cells away from a warp to summon a warp portal.", battle_config.min_npc_warp_distance);
+			clif_displaymessage(sd.fd, output);
+			clif_skill_fail(sd,skill_id,USESKILL_FAIL_THERE_ARE_NPC_AROUND,0);
+			return;
+		}
+	}
 
 	if( skill_isNotOk(skill_id, sd) )
 		return;

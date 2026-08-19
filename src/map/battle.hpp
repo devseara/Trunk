@@ -568,6 +568,7 @@ struct Battle_Config
 
 	int32 atcommand_suggestions_enabled;
 	int32 min_npc_vendchat_distance;
+	int32 min_npc_warp_distance;
 	int32 atcommand_mobinfo_type;
 
 	int32 mob_size_influence; // Enable modifications on earned experience, drop rates and monster status depending on monster size. [mkbu95]
